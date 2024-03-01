@@ -29,9 +29,8 @@ contract Zenith is AccessControlDefaultAdminRules {
     // TODO: blobs must be in the correct order at the time that the sequencer signs the commitment. is that okay?
     function submitBlock(uint256 blockSequence, uint32[] memory blobIndices, uint8 v, bytes32 r, bytes32 s) external {
         // assert that the sequence number is valid and increment it
-        uint256 _nextSequence = nextSequence;
+        uint256 _nextSequence = nextSequence++;
         if (blockSequence != _nextSequence) revert BadSequence(_nextSequence, blockSequence);
-        nextSequence = _nextSequence + 1;
 
         // derive block commitment from sequence number and blobhashes 
         bytes32 commit = blockCommitment(blockSequence, blobIndices);
