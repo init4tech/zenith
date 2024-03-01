@@ -9,10 +9,10 @@ contract Zenith is AccessControlDefaultAdminRules {
 
     uint256 public nextSequence;
 
-    // blocks must be submitted in strict increasing order 
+    // blocks must be submitted in strict increasing order
     error BadSequence(uint256 expected, uint256 actual);
 
-    // either the sequencer is not permissioned, or there's something wrong with the commit 
+    // either the sequencer is not permissioned, or there's something wrong with the commit
     // (e.g. blob indices submitted don't map to the committed blob hashes)
     // if the commit is wrong, the signer will be a junk value
     // if the sequencer is not permissioned, the signer & commit should be meaningful values, but the signer will not have the SEQUENCER_ROLE
@@ -32,9 +32,9 @@ contract Zenith is AccessControlDefaultAdminRules {
         uint256 _nextSequence = nextSequence++;
         if (blockSequence != _nextSequence) revert BadSequence(_nextSequence, blockSequence);
 
-        // derive block commitment from sequence number and blobhashes 
-        bytes32 commit = blockCommitment(blockSequence, blobIndices);
-        
+        // derive block commitment from sequence number and blobhashes
+        bytes32 commit = _blockCommitment(blockSequence, blobIndices);
+
         // derive sequencer from signature
         address sequencer = ecrecover(commit, v, r, s);
 
@@ -45,27 +45,27 @@ contract Zenith is AccessControlDefaultAdminRules {
         emit BlockSubmitted(blockSequence, sequencer, blobIndices);
     }
 
-    function blockCommitment(uint256 blockSequence, bytes32[] memory blobHashes) external view returns(bytes32) {
+    function blockCommitment(uint256 blockSequence, bytes32[] memory blobHashes) external view returns (bytes32) {
         return _commit(blockSequence, _packHashes(blobHashes));
     }
 
+    function _blockCommitment(uint256 blockSequence, uint32[] memory blobIndices) internal view returns (bytes32) {
+        return _commit(blockSequence, _getHashes(blobIndices));
+    }
+
     function _packHashes(bytes32[] memory blobHashes) internal pure returns (bytes memory hashes) {
-        for(uint32 i = 0; i < blobHashes.length; i++) {
+        for (uint32 i = 0; i < blobHashes.length; i++) {
             hashes = abi.encodePacked(hashes, blobHashes[i]);
         }
     }
 
-    function blockCommitment(uint256 blockSequence, uint32[] memory blobIndices) internal view returns(bytes32) {
-        return _commit(blockSequence, _getHashes(blobIndices));
-    }
-
-    function _getHashes(uint32[] memory blobIndices) internal view returns(bytes memory hashes) {
+    function _getHashes(uint32[] memory blobIndices) internal view returns (bytes memory hashes) {
         for (uint32 i = 0; i < blobIndices.length; i++) {
             hashes = abi.encodePacked(hashes, blobhash(blobIndices[i]));
         }
     }
 
-    function _commit(uint256 blockSequence, bytes memory hashes) internal view returns(bytes32) {
+    function _commit(uint256 blockSequence, bytes memory hashes) internal view returns (bytes32) {
         bytes memory commit = abi.encodePacked("zenith", block.chainid, blockSequence, hashes.length, hashes);
         return keccak256(commit);
     }

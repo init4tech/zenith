@@ -33,7 +33,7 @@ contract ZenithTest is Test {
         // derive block commitment from sequence number and blobhashes
         bytes32 commit = target.blockCommitment(blockSequence, blobHashes);
 
-        // sign block commitmenet with sequencer key 
+        // sign block commitmenet with sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
         // should emit BlockSubmitted event
@@ -41,11 +41,11 @@ contract ZenithTest is Test {
         emit BlockSubmitted(0, vm.addr(sequencerKey), blobIndices);
         target.submitBlock(blockSequence, blobIndices, v, r, s);
 
-        // should increment sequence number 
+        // should increment sequence number
         assertEq(target.nextSequence(), blockSequence + 1);
     }
 
-    // TODO: invalid sequencer 
+    // TODO: invalid sequencer
     // TODO: invalid signature
     // TODO: incorrect sequence number
 }
