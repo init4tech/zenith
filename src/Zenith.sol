@@ -30,7 +30,7 @@ contract Zenith is AccessControlDefaultAdminRules {
     function submitBlock(uint256 blockSequence, uint32[] memory blobIndices, uint8 v, bytes32 r, bytes32 s) external {
         // assert that the sequence number is valid and increment it
         uint256 _nextSequence = nextSequence++;
-        if (blockSequence != _nextSequence) revert BadSequence(_nextSequence, blockSequence);
+        if (_nextSequence != blockSequence) revert BadSequence(_nextSequence, blockSequence);
 
         // derive block commitment from sequence number and blobhashes
         bytes32 commit = _blockCommitment(blockSequence, blobIndices);
