@@ -33,6 +33,13 @@ contract RollupPassage {
     event Exit(address indexed mainnetRecipient, uint256 amount, uint256 tip);
     event Cross(uint256 indexed ruChainId, address indexed rollupRecipient, uint256 amount);
 
+    // NOTE: In response to this event, the rollup STF MUST
+    //          1. burn msg.value amount of Ether on this rollup
+    //          2. mint msg.value amount of Ether to `rollupRecipient` on `ruChainId` chain
+    function cross(uint256 ruChainId, address rollupRecipient) external payable {
+        emit Cross(ruChainId, rollupRecipient, msg.value);
+    }
+
     // BRIDGE OUT OF ROLLUP
     // tips the block builder with RU Ether, burns the rest of the Ether, emits an event to fill the Exit on mainnet
     // NOTE: This transaction MUST only be regarded by rollup nodes IFF a corresponding
@@ -45,12 +52,5 @@ contract RollupPassage {
     function exit(address mainnetRecipient, uint256 tip) external payable {
         if (msg.value <= tip) revert InsufficientValue();
         emit Exit(mainnetRecipient, msg.value - tip, tip);
-    }
-
-    // NOTE: In response to this event, the rollup STF MUST
-    //          1. burn msg.value amount of Ether on this rollup
-    //          2. mint msg.value amount of Ether to `rollupRecipient` on `ruChainId` chain
-    function cross(uint256 ruChainId, address rollupRecipient) external payable {
-        emit Cross(ruChainId, rollupRecipient, msg.value);
     }
 }
