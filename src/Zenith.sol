@@ -3,8 +3,9 @@ pragma solidity ^0.8.24;
 
 // import openzeppelin Role contracts
 import "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import {MainnetPassage} from "./Passage.sol";
 
-contract Zenith is AccessControlDefaultAdminRules {
+contract Zenith is MainnetPassage, AccessControlDefaultAdminRules {
     bytes32 public constant SEQUENCER_ROLE = bytes32("SEQUENCER_ROLE");
 
     uint256 public nextSequence;
