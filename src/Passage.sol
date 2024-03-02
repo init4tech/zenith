@@ -7,9 +7,17 @@ contract MainnetPassage {
     event Enter(address indexed rollupRecipient, uint256 amount);
     event ExitFilled(address indexed mainnetRecipient, uint256 amount);
 
+    fallback() external payable {
+        enter(msg.sender);
+    }
+
+    receive() external payable {
+        enter(msg.sender);
+    }
+
     // BRIDGE INTO ROLLUP
     // permanently locks Ether & emits event
-    function enter(address rollupRecipient) external payable {
+    function enter(address rollupRecipient) public payable {
         emit Enter(rollupRecipient, msg.value);
     }
 
