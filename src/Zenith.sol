@@ -7,10 +7,11 @@ import "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultA
 contract Zenith is AccessControlDefaultAdminRules {
     bytes32 public constant SEQUENCER_ROLE = bytes32("SEQUENCER_ROLE");
 
-    uint256 public nextSequence;
+    // ruChainId => nextSequence
+    mapping(uint256 => uint256) public nextSequence;
 
     // blocks must be submitted in strict increasing order
-    error BadSequence(uint256 expected, uint256 actual);
+    error BadSequence(uint256 ruChainId, uint256 expected, uint256 actual);
 
     // either the sequencer is not permissioned, or there's something wrong with the commit
     // (e.g. blob indices submitted don't map to the committed blob hashes)
@@ -19,7 +20,9 @@ contract Zenith is AccessControlDefaultAdminRules {
     error BadSignature(address signer, bytes32 commit);
 
     // successful block submission
-    event BlockSubmitted(uint256 indexed sequence, address indexed sequencer, uint32[] blobIndices);
+    event BlockSubmitted(
+        uint256 indexed ruChainId, uint256 indexed sequence, address indexed sequencer, uint32[] blobIndices
+    );
 
     // set the deployer as the Admin role which can grant and revoke Sequencer roles
     // Admin role can be transferred via two-step initiate/accept process with a 1 day timelock
@@ -27,13 +30,20 @@ contract Zenith is AccessControlDefaultAdminRules {
 
     // ACCEPT BLOCKS
     // TODO: blobs must be in the correct order at the time that the sequencer signs the commitment. is that okay?
-    function submitBlock(uint256 blockSequence, uint32[] memory blobIndices, uint8 v, bytes32 r, bytes32 s) external {
+    function submitBlock(
+        uint256 ruChainId,
+        uint256 blockSequence,
+        uint32[] memory blobIndices,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external {
         // assert that the sequence number is valid and increment it
-        uint256 _nextSequence = nextSequence++;
-        if (_nextSequence != blockSequence) revert BadSequence(_nextSequence, blockSequence);
+        uint256 _nextSequence = nextSequence[ruChainId]++;
+        if (_nextSequence != blockSequence) revert BadSequence(ruChainId, _nextSequence, blockSequence);
 
         // derive block commitment from sequence number and blobhashes
-        bytes32 commit = _blockCommitment(blockSequence, blobIndices);
+        bytes32 commit = _blockCommitment(ruChainId, blockSequence, blobIndices);
 
         // derive sequencer from signature
         address sequencer = ecrecover(commit, v, r, s);
@@ -42,15 +52,23 @@ contract Zenith is AccessControlDefaultAdminRules {
         if (!hasRole(SEQUENCER_ROLE, sequencer)) revert BadSignature(sequencer, commit);
 
         // emit event
-        emit BlockSubmitted(blockSequence, sequencer, blobIndices);
+        emit BlockSubmitted(ruChainId, blockSequence, sequencer, blobIndices);
     }
 
-    function blockCommitment(uint256 blockSequence, bytes32[] memory blobHashes) external view returns (bytes32) {
-        return _commit(blockSequence, _packHashes(blobHashes));
+    function blockCommitment(uint256 ruChainId, uint256 blockSequence, bytes32[] memory blobHashes)
+        external
+        view
+        returns (bytes32)
+    {
+        return _commit(ruChainId, blockSequence, _packHashes(blobHashes));
     }
 
-    function _blockCommitment(uint256 blockSequence, uint32[] memory blobIndices) internal view returns (bytes32) {
-        return _commit(blockSequence, _getHashes(blobIndices));
+    function _blockCommitment(uint256 ruChainId, uint256 blockSequence, uint32[] memory blobIndices)
+        internal
+        view
+        returns (bytes32)
+    {
+        return _commit(ruChainId, blockSequence, _getHashes(blobIndices));
     }
 
     function _packHashes(bytes32[] memory blobHashes) internal pure returns (bytes memory hashes) {
@@ -65,8 +83,8 @@ contract Zenith is AccessControlDefaultAdminRules {
         }
     }
 
-    function _commit(uint256 blockSequence, bytes memory hashes) internal view returns (bytes32) {
-        bytes memory commit = abi.encodePacked("zenith", block.chainid, blockSequence, hashes.length, hashes);
+    function _commit(uint256 ruChainId, uint256 blockSequence, bytes memory hashes) internal view returns (bytes32) {
+        bytes memory commit = abi.encodePacked("zenith", block.chainid, ruChainId, blockSequence, hashes.length, hashes);
         return keccak256(commit);
     }
 }

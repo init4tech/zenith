@@ -19,6 +19,7 @@ contract ZenithTest is Test {
     // BLOCKED by PR supporting vm.blobhashes: https://github.com/foundry-rs/foundry/pull/7001
     function BLOCKED_test_submitBlock() public {
         // first block has index 0
+        uint256 ruChainId = 123;
         uint256 blockSequence = 0;
 
         // construct array with fake blobhash
@@ -31,7 +32,7 @@ contract ZenithTest is Test {
         // TODO: vm.blobhashes(blobHashes);
 
         // derive block commitment from sequence number and blobhashes
-        bytes32 commit = target.blockCommitment(blockSequence, blobHashes);
+        bytes32 commit = target.blockCommitment(ruChainId, blockSequence, blobHashes);
 
         // sign block commitmenet with sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
@@ -39,10 +40,10 @@ contract ZenithTest is Test {
         // should emit BlockSubmitted event
         vm.expectEmit();
         emit BlockSubmitted(0, vm.addr(sequencerKey), blobIndices);
-        target.submitBlock(blockSequence, blobIndices, v, r, s);
+        target.submitBlock(ruChainId, blockSequence, blobIndices, v, r, s);
 
         // should increment sequence number
-        assertEq(target.nextSequence(), blockSequence + 1);
+        assertEq(target.nextSequence(ruChainId), blockSequence + 1);
     }
 
     // TODO: invalid sequencer
