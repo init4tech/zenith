@@ -5,8 +5,6 @@ pragma solidity ^0.8.24;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract MainnetPassage {
-    error MismatchedArrayLengths();
-
     event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
     event ExitFilled(address indexed token, address indexed mainnetRecipient, uint256 amount);
 
