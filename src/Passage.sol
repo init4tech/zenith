@@ -88,6 +88,19 @@ contract RollupPassage {
         emit Exit(tokenIn_RU, tokenOut_MN, recipient_MN, deadline, amountIn_RU, amountOutMinimum_MN);
     }
 
+    function exitExactInput(
+        address tokenOut_MN,
+        address recipient_MN,
+        uint256 deadline,
+        uint256 amountOutMinimum_MN
+    ) external payable {
+        // check that the deadline hasn't passed
+        if (block.timestamp >= deadline) revert Expired();
+
+        // emit the exit event
+        emit Exit(address(0), tokenOut_MN, recipient_MN, deadline, msg.value, amountOutMinimum_MN);
+    }
+
     // SWEEP
     // called by builder to pay themselves users' inputs
     //      NOTE: builder MUST NOT include transactions that call sweep() before they do
@@ -99,5 +112,9 @@ contract RollupPassage {
             IERC20 token = IERC20(tokens[i]);
             token.transfer(recipient, token.balanceOf(address(this)));
         }
+    }
+
+    function sweepETH(address payable recipient) public {
+        recipient.transfer(address(this).balance);
     }
 }
