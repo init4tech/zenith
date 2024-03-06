@@ -93,12 +93,10 @@ contract RollupPassage {
         emit Exit(tokenIn_RU, tokenOut_MN, recipient_MN, deadline, amountIn_RU, amountOutMinimum_MN);
     }
 
-    function exitExactInput(
-        address tokenOut_MN,
-        address recipient_MN,
-        uint256 deadline,
-        uint256 amountOutMinimum_MN
-    ) external payable {
+    function exitExactInput(address tokenOut_MN, address recipient_MN, uint256 deadline, uint256 amountOutMinimum_MN)
+        external
+        payable
+    {
         // check that the deadline hasn't passed
         if (block.timestamp >= deadline) revert Expired();
 
