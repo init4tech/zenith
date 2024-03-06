@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
+// import IERC20 from OpenZeppelin
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
 contract MainnetPassage {
     error MismatchedArrayLengths();
 
@@ -34,21 +37,59 @@ contract MainnetPassage {
 }
 
 contract RollupPassage {
-    error InsufficientValue();
+    // TODO: add more info?
+    error Expired();
 
-    event Exit(address indexed mainnetRecipient, uint256 amount, uint256 tip);
+    event Exit(
+        address indexed tokenIn_RU,
+        address indexed tokenOut_MN,
+        address indexed recipient_MN,
+        uint256 deadline,
+        uint256 amountIn_RU,
+        uint256 amountOutMinimum_MN
+    );
 
     // BRIDGE OUT OF ROLLUP
-    // tips the block builder with RU Ether, burns the rest of the Ether, emits an event to fill the Exit on mainnet
+    // transfers some token input on the rollup, which is claimable by the builder via `sweep`
+    // expects a minimum token output on mainnet, which will be filled by the builder
+
+    // emits an event to signal a required exit on mainnet
     // NOTE: This transaction MUST only be regarded by rollup nodes IFF a corresponding
     //       ExitFilled(recipient, amount) event was emitted by mainnet in the same block.
     //       Otherwise, the rollup STF MUST regard this transaction as invalid.
-    //       In response to this event, the rollup STF MUST
-    //          1. transfer `tip` to the `tipRecipient` specified by the block builder
-    //          2. burn the rest of the Ether
-    // TODO: add `tipRecipient` parameter to `submitBlock` function in Zenith.sol
-    function exit(address mainnetRecipient, uint256 tip) external payable {
-        if (msg.value <= tip) revert InsufficientValue();
-        emit Exit(mainnetRecipient, msg.value - tip, tip);
+
+    // user transfers their tokens / ETH into the contract as part of this function
+    // user specifies what they need to receive on mainnet for the transfer to be applied by RU STF
+    // builder sends the output on mainnet
+    // builder adds the user's transactions to RU + sweep() function, which sends all inputs to themselves at the end of the block
+    function exitExactInput(
+        address tokenIn_RU,
+        address tokenOut_MN,
+        address recipient_MN,
+        uint256 deadline,
+        uint256 amountIn_RU,
+        uint256 amountOutMinimum_MN
+    ) external {
+        // check that the deadline hasn't passed
+        if (block.timestamp >= deadline) revert Expired();
+
+        // transfer the tokens from the user to the contract
+        IERC20(tokenIn_RU).transferFrom(msg.sender, address(this), amountIn_RU);
+
+        // emit the exit event
+        emit Exit(tokenIn_RU, tokenOut_MN, recipient_MN, deadline, amountIn_RU, amountOutMinimum_MN);
+    }
+
+    // SWEEP
+    // called by builder to pay themselves users' inputs
+    //      NOTE: builder MUST NOT include transactions that call sweep() before they do
+    //      NOTE: builder MUST check that user doesn't call sweep() within same transaction as this function
+    //      NOTE: builder SHOULD call sweep() directly after the transaction that calls this function
+    // TODO: should there be more granular control for the builder to specify a different recipient for each token?
+    function sweep(address recipient, address[] calldata tokens) public {
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20 token = IERC20(tokens[i]);
+            token.transfer(recipient, token.balanceOf(address(this)));
+        }
     }
 }
