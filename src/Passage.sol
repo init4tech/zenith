@@ -25,11 +25,13 @@ contract MainnetPassage {
     }
 
     // BRIDGE INTO ROLLUP
-    // permanently locks tokens & emits event
+    // permanently locks ETH & emits event
     function enter(address rollupRecipient) public payable {
         emit Enter(address(0), rollupRecipient, msg.value);
     }
 
+    // permanently locks tokens & emits event
+    // TODO: how does RU node mint ERC20s to recipient?
     function enter(address token, address rollupRecipient, uint256 amount) external {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         emit Enter(token, rollupRecipient, amount);
