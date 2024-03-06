@@ -10,6 +10,12 @@ contract MainnetPassage {
     event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
     event ExitFilled(address indexed token, address indexed mainnetRecipient, uint256 amount);
 
+    struct ExitFill {
+        address token;
+        address recipient;
+        uint256 amount;
+    }
+
     fallback() external payable {
         enter(msg.sender);
     }
@@ -31,16 +37,12 @@ contract MainnetPassage {
 
     // BRIDGE OUT OF ROLLUP
     // fwds Ether from block builder to recipients to fill Exit events
-    // TODO: fill native ETH?
-    function fillExits(address[] calldata tokens, address[] calldata mainnetRecipients, uint256[] calldata amounts)
-        external
-    {
-        if (tokens.length != mainnetRecipients.length && mainnetRecipients.length != amounts.length) {
-            revert MismatchedArrayLengths();
-        }
-        for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20(tokens[i]).transferFrom(msg.sender, mainnetRecipients[i], amounts[i]);
-            emit ExitFilled(tokens[i], mainnetRecipients[i], amounts[i]);
+    // TODO: fill native ETH? or is it sufficient to only allow filling WETH?
+    function fillExits(ExitFill[] calldata fills) external {
+        for (uint256 i = 0; i < fills.length; i++) {
+            ExitFill memory fill = fills[i];
+            IERC20(fill.token).transferFrom(msg.sender, fill.recipient, fill.amount);
+            emit ExitFilled(fill.token, fill.recipient, fill.amount);
         }
     }
 }
