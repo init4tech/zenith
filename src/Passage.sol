@@ -7,8 +7,8 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 contract MainnetPassage {
     error MismatchedArrayLengths();
 
-    event Enter(address indexed rollupRecipient, uint256 amount);
-    event ExitFilled(address indexed mainnetRecipient, uint256 amount);
+    event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
+    event ExitFilled(address indexed token, address indexed mainnetRecipient, uint256 amount);
 
     fallback() external payable {
         enter(msg.sender);
@@ -19,19 +19,27 @@ contract MainnetPassage {
     }
 
     // BRIDGE INTO ROLLUP
-    // permanently locks Ether & emits event
+    // permanently locks tokens & emits event
     function enter(address rollupRecipient) public payable {
-        emit Enter(rollupRecipient, msg.value);
+        emit Enter(address(0), rollupRecipient, msg.value);
+    }
+
+    function enter(address token, address rollupRecipient, uint256 amount) external {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        emit Enter(token, rollupRecipient, amount);
     }
 
     // BRIDGE OUT OF ROLLUP
     // fwds Ether from block builder to recipients to fill Exit events
-    function fillExits(address[] calldata mainnetRecipients, uint256[] calldata amounts) external payable {
-        if (mainnetRecipients.length != amounts.length) revert MismatchedArrayLengths();
-
-        for (uint256 i = 0; i < mainnetRecipients.length; i++) {
-            payable(mainnetRecipients[i]).transfer(amounts[i]);
-            emit ExitFilled(mainnetRecipients[i], amounts[i]);
+    function fillExits(address[] calldata tokens, address[] calldata mainnetRecipients, uint256[] calldata amounts)
+        external
+    {
+        if (tokens.length != mainnetRecipients.length && mainnetRecipients.length != amounts.length) {
+            revert MismatchedArrayLengths();
+        }
+        for (uint256 i = 0; i < tokens.length; i++) {
+            IERC20(tokens[i]).transferFrom(msg.sender, mainnetRecipients[i], amounts[i]);
+            emit ExitFilled(tokens[i], mainnetRecipients[i], amounts[i]);
         }
     }
 }
