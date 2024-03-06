@@ -31,6 +31,7 @@ contract MainnetPassage {
 
     // BRIDGE OUT OF ROLLUP
     // fwds Ether from block builder to recipients to fill Exit events
+    // TODO: fill native ETH?
     function fillExits(address[] calldata tokens, address[] calldata mainnetRecipients, uint256[] calldata amounts)
         external
     {
