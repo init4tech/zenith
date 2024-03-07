@@ -54,6 +54,8 @@ contract RollupPassage {
     );
 
     // BRIDGE OUT OF ROLLUP
+
+    // EXIT TOKENS
     // transfers some token input on the rollup, which is claimable by the builder via `sweep`
     // expects a minimum token output on mainnet, which will be filled by the builder
 
@@ -84,6 +86,7 @@ contract RollupPassage {
         emit Exit(tokenIn_RU, tokenOut_MN, recipient_MN, deadline, amountIn_RU, amountOutMinimum_MN);
     }
 
+    // EXIT ETH
     function exitExactInput(address tokenOut_MN, address recipient_MN, uint256 deadline, uint256 amountOutMinimum_MN)
         external
         payable
