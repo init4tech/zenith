@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 // import openzeppelin Role contracts
-import "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import {AccessControlDefaultAdminRules} from
+    "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 import {MainnetPassage} from "./Passage.sol";
 
 contract Zenith is MainnetPassage, AccessControlDefaultAdminRules {
