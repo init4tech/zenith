@@ -12,7 +12,7 @@ contract ZenithTest is Test {
     event BlockSubmitted(uint256 indexed sequence, address indexed sequencer, uint32[] blobIndices);
 
     function setUp() public {
-        target = new Zenith();
+        target = new Zenith(address(this));
         target.grantRole(target.SEQUENCER_ROLE(), vm.addr(sequencerKey));
     }
 

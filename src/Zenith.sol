@@ -35,11 +35,12 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     // TODO: can an off-chain observer easily get the blob data from the transaction using the blob indices?
     event BlockSubmitted(uint256 indexed sequence, address indexed sequencer, uint32[] blobIndices);
 
-    // @notice Sets the deployer as the Admin role.
+    // @notice Initializes the Admin role.
     // @dev See `AccessControlDefaultAdminRules` for information on contract administration.
     //      - Admin role can grant and revoke Sequencer roles.
     //      - Admin role can be transferred via two-step process with a 1 day timelock.
-    constructor() AccessControlDefaultAdminRules(1 days, msg.sender) {}
+    // @param admin - the address that will be the initial admin.
+    constructor(address admin) AccessControlDefaultAdminRules(1 days, admin) {}
 
     // @notice Submit a rollup block with block data stored in 4844 blobs.
     // @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
