@@ -5,43 +5,86 @@ pragma solidity ^0.8.24;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract MainnetPassage {
+    // @notice Thrown when attempting to fill an exit order with a deadline that has passed.
+    error Expired();
+
+    // @notice Emitted when tokens enter the rollup.
+    // @param token - The address of the token entering the rollup.
+    // @param rollupRecipient - The recipient of the token on the rollup.
+    // @param amount - The amount of the token entering the rollup.
     event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
+
+    // @notice Emitted when an exit order is fulfilled by the Builder.
+    // @param token - The address of the token transferred to the recipient.
+    // @param mainnetRecipient - The recipient of the token on mainnet.
+    // @param amount - The amount of the token transferred to the recipient.
     event ExitFilled(address indexed token, address indexed mainnetRecipient, uint256 amount);
 
-    struct ExitFill {
+    // @notice Details of an exit order to be fulfilled by the Builder.
+    // @param token - The address of the token to be transferred to the recipient.
+    //                If token is the zero address, the amount is native Ether.
+    //                Corresponds to tokenOut_MN in the RollupPassage contract.
+    // @param recipient - The recipient of the token on mainnet.
+    //                    Corresponds to recipient_MN in the RollupPassage contract.
+    // @param amount - The amount of the token to be transferred to the recipient.
+    //                 Corresponds to one or more amountOutMinimum_MN in the RollupPassage contract.
+    // @param deadline - The deadline by which the exit order must be fulfilled.
+    //                   Corresponds to deadline in the RollupPassage contract.
+    //                   If the ExitOrder is a combination of multiple orders, the deadline SHOULD be the latest of all orders.
+    struct ExitOrder {
         address token;
         address recipient;
         uint256 amount;
+        uint256 deadline;
     }
 
+    // @notice Allows native Ether to enter the rollup by being sent directly to the contract.
     fallback() external payable {
         enter(msg.sender);
     }
 
+    // @notice Allows native Ether to enter the rollup by being sent directly to the contract.
     receive() external payable {
         enter(msg.sender);
     }
 
-    // BRIDGE INTO ROLLUP
-    // permanently locks ETH & emits event
+    // @notice Allows native Ether to enter the rollup.
+    // @dev Permanently burns the entire msg.value by locking it in this contract.
+    // @param rollupRecipient - The recipient of the Ether on the rollup.
+    // @custom:emits Enter indicatig the amount of Ether to mint on the rollup & its recipient.
     function enter(address rollupRecipient) public payable {
         emit Enter(address(0), rollupRecipient, msg.value);
     }
 
-    // BRIDGE OUT OF ROLLUP
-    // fwds Ether from block builder to recipients to fill Exit events
-    // TODO: fill native ETH? or is it sufficient to only allow filling WETH?
-    function fillExits(ExitFill[] calldata fills) external {
-        for (uint256 i = 0; i < fills.length; i++) {
-            ExitFill memory fill = fills[i];
-            IERC20(fill.token).transferFrom(msg.sender, fill.recipient, fill.amount);
-            emit ExitFilled(fill.token, fill.recipient, fill.amount);
+    // @notice Fulfills exit orders by transferring tokenOut to the recipient
+    // @param orders The exit orders to fulfill
+    // @custom:emits ExitFilled for each exit order fulfilled.
+    // @dev Called by the Builder atomically with a transaction calling `submitBlock`.
+    //      The user-submitted transactions initiating the ExitOrders on the rollup
+    //      must be included by the Builder in the rollup block submitted via `submitBlock`.
+    // @dev The user transfers tokenIn on the rollup, and receives tokenOut on mainnet.
+    // @dev The Builder receives tokenIn on the rollup, and transfers tokenOut to the user on mainnet.
+    // @dev The rollup STF MUST NOT apply `initiateExit` transactions to the rollup state
+    //      UNLESS a corresponding ExitFilled event is emitted on mainnet in the same block.
+    // @dev If the user initiates multiple exit transactions for the same token in the same rollup block,
+    //      the Builder may transfer the cumulative tokenOut to the user in a single ExitFilled event.
+    //      The rollup STF will apply the user's transactions on the rollup, up to the point that sum(tokenOut) is lte the ExitFilled amount.
+    // TODO: add option to fulfill ExitOrders with native ETH? or is it sufficient to only allow users to exit via WETH?
+    function fulfillExitOrders(ExitOrder[] calldata orders) external {
+        for (uint256 i = 0; i < orders.length; i++) {
+            ExitOrder memory order = orders[i];
+            // check that the deadline hasn't passed
+            if (block.timestamp >= order.deadline) revert Expired();
+            // transfer tokens to the recipient
+            IERC20(order.token).transferFrom(msg.sender, order.recipient, order.amount);
+            // emit
+            emit ExitFilled(order.token, order.recipient, order.amount);
         }
     }
 }
 
 contract RollupPassage {
-    // TODO: add more info?
+    // @notice Thrown when an exit tranaction is submitted with a deadline that has passed.
     error Expired();
 
     event Exit(
