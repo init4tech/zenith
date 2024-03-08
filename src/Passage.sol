@@ -64,13 +64,13 @@ contract MainnetPassage {
     //      must be included by the Builder in the rollup block submitted via `submitBlock`.
     // @dev The user transfers tokenIn on the rollup, and receives tokenOut on mainnet.
     // @dev The Builder receives tokenIn on the rollup, and transfers tokenOut to the user on mainnet.
-    // @dev The rollup STF MUST NOT apply `initiateExit` transactions to the rollup state
+    // @dev The rollup STF MUST NOT apply `submitExit` transactions to the rollup state
     //      UNLESS a corresponding ExitFilled event is emitted on mainnet in the same block.
-    // @dev If the user initiates multiple exit transactions for the same token in the same rollup block,
+    // @dev If the user submits multiple exit transactions for the same token in the same rollup block,
     //      the Builder may transfer the cumulative tokenOut to the user in a single ExitFilled event.
-    //      The rollup STF will apply the user's transactions on the rollup, up to the point that sum(tokenOut) is lte the ExitFilled amount.
+    //      The rollup STF will apply the user's exit transactions on the rollup up to the point that sum(tokenOut) is lte the ExitFilled amount.
     // TODO: add option to fulfill ExitOrders with native ETH? or is it sufficient to only allow users to exit via WETH?
-    function fulfillExitOrders(ExitOrder[] calldata orders) external {
+    function fulfillExits(ExitOrder[] calldata orders) external {
         for (uint256 i = 0; i < orders.length; i++) {
             ExitOrder memory order = orders[i];
             // check that the deadline hasn't passed
@@ -87,6 +87,8 @@ contract RollupPassage {
     // @notice Thrown when an exit tranaction is submitted with a deadline that has passed.
     error Expired();
 
+    // @notice Emitted when an exit order is submitted & successfully processed, indicating it was also fulfilled on mainnet.
+    // @dev See `submitExit` for parameter docs.
     event Exit(
         address indexed tokenIn_RU,
         address indexed tokenOut_MN,
@@ -96,22 +98,32 @@ contract RollupPassage {
         uint256 amountOutMinimum_MN
     );
 
-    // BRIDGE OUT OF ROLLUP
+    // @notice Emitted when tokens or native Ether is swept from the contract.
+    // @dev Intended to improve visibility for Builders to ensure Sweep isn't called unexpectedly.
+    //      Intentionally does not bother to emit which token(s) were swept, nor their amounts.
+    event Sweep(address indexed recipient);
 
-    // EXIT TOKENS
-    // transfers some token input on the rollup, which is claimable by the builder via `sweep`
-    // expects a minimum token output on mainnet, which will be filled by the builder
-
-    // emits an event to signal a required exit on mainnet
-    // NOTE: This transaction MUST only be regarded by rollup nodes IFF a corresponding
-    //       ExitFilled(recipient, amount) event was emitted by mainnet in the same block.
-    //       Otherwise, the rollup STF MUST regard this transaction as invalid.
-
-    // user transfers their tokens / ETH into the contract as part of this function
-    // user specifies what they need to receive on mainnet for the transfer to be applied by RU STF
-    // builder sends the output on mainnet
-    // builder adds the user's transactions to RU + sweep() function, which sends all inputs to themselves at the end of the block
-    function exitExactInput(
+    // @notice Expresses an intent to exit the rollup with ERC20s.
+    // @dev Exits are modeled as a swap between two tokens.
+    //      tokenIn_RU is provided on the rollup; in exchange,
+    //      tokenOut_MN is expected to be received on mainnet.
+    //      Exits may "swap" native rollup Ether for mainnet WETH -
+    //      two assets that represent the same underlying token and should have roughly the same value -
+    //      or they may be a more "true" swap of rollup USDC for mainnet WETH.
+    //      Fees paid to the Builders for fulfilling the exit orders
+    //      can be included within the "exchange rate" between tokenIn and tokenOut.
+    // @dev The Builder claims the tokenIn_RU from the contract by submitting a transaction to `sweep` the tokens within the same block.
+    // @dev The Rollup STF MUST NOT apply `submitExit` transactions to the rollup state
+    //      UNLESS a sufficient ExitFilled event is emitted on mainnet within the same block.
+    // @param tokenIn_RU - The address of the token the user supplies as the input for the trade, which is transferred on the rollup.
+    // @param tokenOut_MN - The address of the token the user expects to receive on mainnet.
+    // @param recipient_MN - The address of the recipient of tokenOut_MN on mainnet.
+    // @param deadline - The deadline by which the exit order must be fulfilled.
+    // @param amountIn_RU - The amount of tokenIn_RU the user supplies as the input for the trade, which is transferred on the rollup.
+    // @param amountOutMinimum_MN - The minimum amount of tokenOut_MN the user expects to receive on mainnet.
+    // @custom:reverts Expired if the deadline has passed.
+    // @custom:emits Exit if the exit transaction succeeds.
+    function submitExit(
         address tokenIn_RU,
         address tokenOut_MN,
         address recipient_MN,
@@ -129,8 +141,17 @@ contract RollupPassage {
         emit Exit(tokenIn_RU, tokenOut_MN, recipient_MN, deadline, amountIn_RU, amountOutMinimum_MN);
     }
 
-    // EXIT ETH
-    function exitExactInput(address tokenOut_MN, address recipient_MN, uint256 deadline, uint256 amountOutMinimum_MN)
+    // @notice Expresses an intent to exit the rollup with native Ether.
+    // @dev See `submitExit` above for dev details on how exits work.
+    // @dev tokenIn_MN is automatically set to address(0), native Ether.
+    //      amountIn_RU is set to msg.value.
+    // @param tokenOut_MN - The address of the token the user expects to receive on mainnet.
+    // @param recipient_MN - The address of the recipient of tokenOut_MN on mainnet.
+    // @param deadline - The deadline by which the exit order must be fulfilled.
+    // @param amountOutMinimum_MN - The minimum amount of tokenOut_MN the user expects to receive on mainnet.
+    // @custom:reverts Expired if the deadline has passed.
+    // @custom:emits Exit if the exit transaction succeeds.
+    function submitExit(address tokenOut_MN, address recipient_MN, uint256 deadline, uint256 amountOutMinimum_MN)
         external
         payable
     {
@@ -141,20 +162,26 @@ contract RollupPassage {
         emit Exit(address(0), tokenOut_MN, recipient_MN, deadline, msg.value, amountOutMinimum_MN);
     }
 
-    // SWEEP
-    // called by builder to pay themselves users' inputs
-    //      NOTE: builder MUST NOT include transactions that call sweep() before they do
-    //      NOTE: builder MUST check that user doesn't call sweep() within same transaction as this function
-    //      NOTE: builder SHOULD call sweep() directly after the transaction that calls this function
+    // @notice Transfer the entire balance of tokens to the recipient.
+    // @dev Called by the Builder within the same block as `submitExit` transactions to claim the amounts of `tokenIn`.
+    // @dev Builder MUST ensure that no other account calls `sweep` before them.
+    // @param recipient - The address to receive the tokens.
+    // @param tokens - The addresses of the tokens to transfer.
     // TODO: should there be more granular control for the builder to specify a different recipient for each token?
     function sweep(address recipient, address[] calldata tokens) public {
         for (uint256 i = 0; i < tokens.length; i++) {
             IERC20 token = IERC20(tokens[i]);
             token.transfer(recipient, token.balanceOf(address(this)));
         }
+        emit Sweep(recipient);
     }
 
+    // @notice Transfer the entire balance of native Ether to the recipient.
+    // @dev Called by the Builder within the same block as `submitExit` transactions to claim the amounts of native Ether.
+    // @dev Builder MUST ensure that no other account calls `sweepETH` before them.
+    // @param recipient - The address to receive the native Ether.
     function sweepETH(address payable recipient) public {
         recipient.transfer(address(this).balance);
+        emit Sweep(recipient);
     }
 }
