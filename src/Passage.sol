@@ -4,8 +4,10 @@ pragma solidity ^0.8.24;
 // import IERC20 from OpenZeppelin
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-contract MainnetPassage {
-    // @notice Thrown when attempting to fill an exit order with a deadline that has passed.
+// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
+//         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
+contract HostPassage {
+    // @notice Thrown when attempting to fulfill an exit order with a deadline that has passed.
     error Expired();
 
     // @notice Emitted when tokens enter the rollup.
@@ -16,18 +18,18 @@ contract MainnetPassage {
 
     // @notice Emitted when an exit order is fulfilled by the Builder.
     // @param token - The address of the token transferred to the recipient.
-    // @param mainnetRecipient - The recipient of the token on mainnet.
+    // @param hostRecipient - The recipient of the token on host.
     // @param amount - The amount of the token transferred to the recipient.
-    event ExitFilled(address indexed token, address indexed mainnetRecipient, uint256 amount);
+    event ExitFilled(address indexed token, address indexed hostRecipient, uint256 amount);
 
     // @notice Details of an exit order to be fulfilled by the Builder.
     // @param token - The address of the token to be transferred to the recipient.
     //                If token is the zero address, the amount is native Ether.
-    //                Corresponds to tokenOut_MN in the RollupPassage contract.
-    // @param recipient - The recipient of the token on mainnet.
-    //                    Corresponds to recipient_MN in the RollupPassage contract.
+    //                Corresponds to tokenOut_H in the RollupPassage contract.
+    // @param recipient - The recipient of the token on host.
+    //                    Corresponds to recipient_H in the RollupPassage contract.
     // @param amount - The amount of the token to be transferred to the recipient.
-    //                 Corresponds to one or more amountOutMinimum_MN in the RollupPassage contract.
+    //                 Corresponds to one or more amountOutMinimum_H in the RollupPassage contract.
     // @param deadline - The deadline by which the exit order must be fulfilled.
     //                   Corresponds to deadline in the RollupPassage contract.
     //                   If the ExitOrder is a combination of multiple orders, the deadline SHOULD be the latest of all orders.
@@ -62,10 +64,10 @@ contract MainnetPassage {
     // @dev Called by the Builder atomically with a transaction calling `submitBlock`.
     //      The user-submitted transactions initiating the ExitOrders on the rollup
     //      must be included by the Builder in the rollup block submitted via `submitBlock`.
-    // @dev The user transfers tokenIn on the rollup, and receives tokenOut on mainnet.
-    // @dev The Builder receives tokenIn on the rollup, and transfers tokenOut to the user on mainnet.
+    // @dev The user transfers tokenIn on the rollup, and receives tokenOut on host.
+    // @dev The Builder receives tokenIn on the rollup, and transfers tokenOut to the user on host.
     // @dev The rollup STF MUST NOT apply `submitExit` transactions to the rollup state
-    //      UNLESS a corresponding ExitFilled event is emitted on mainnet in the same block.
+    //      UNLESS a corresponding ExitFilled event is emitted on host in the same block.
     // @dev If the user submits multiple exit transactions for the same token in the same rollup block,
     //      the Builder may transfer the cumulative tokenOut to the user in a single ExitFilled event.
     //      The rollup STF will apply the user's exit transactions on the rollup up to the point that sum(tokenOut) is lte the ExitFilled amount.
@@ -83,19 +85,20 @@ contract MainnetPassage {
     }
 }
 
+// A contract deployed to the Rollup that allows users to atomically exchange tokens on the Rollup for tokens on the Host.
 contract RollupPassage {
     // @notice Thrown when an exit tranaction is submitted with a deadline that has passed.
     error Expired();
 
-    // @notice Emitted when an exit order is submitted & successfully processed, indicating it was also fulfilled on mainnet.
+    // @notice Emitted when an exit order is submitted & successfully processed, indicating it was also fulfilled on host.
     // @dev See `submitExit` for parameter docs.
     event Exit(
         address indexed tokenIn_RU,
-        address indexed tokenOut_MN,
-        address indexed recipient_MN,
+        address indexed tokenOut_H,
+        address indexed recipient_H,
         uint256 deadline,
         uint256 amountIn_RU,
-        uint256 amountOutMinimum_MN
+        uint256 amountOutMinimum_H
     );
 
     // @notice Emitted when tokens or native Ether is swept from the contract.
@@ -106,30 +109,30 @@ contract RollupPassage {
     // @notice Expresses an intent to exit the rollup with ERC20s.
     // @dev Exits are modeled as a swap between two tokens.
     //      tokenIn_RU is provided on the rollup; in exchange,
-    //      tokenOut_MN is expected to be received on mainnet.
-    //      Exits may "swap" native rollup Ether for mainnet WETH -
+    //      tokenOut_H is expected to be received on host.
+    //      Exits may "swap" native rollup Ether for host WETH -
     //      two assets that represent the same underlying token and should have roughly the same value -
-    //      or they may be a more "true" swap of rollup USDC for mainnet WETH.
+    //      or they may be a more "true" swap of rollup USDC for host WETH.
     //      Fees paid to the Builders for fulfilling the exit orders
     //      can be included within the "exchange rate" between tokenIn and tokenOut.
     // @dev The Builder claims the tokenIn_RU from the contract by submitting a transaction to `sweep` the tokens within the same block.
     // @dev The Rollup STF MUST NOT apply `submitExit` transactions to the rollup state
-    //      UNLESS a sufficient ExitFilled event is emitted on mainnet within the same block.
-    // @param tokenIn_RU - The address of the token the user supplies as the input for the trade, which is transferred on the rollup.
-    // @param tokenOut_MN - The address of the token the user expects to receive on mainnet.
-    // @param recipient_MN - The address of the recipient of tokenOut_MN on mainnet.
+    //      UNLESS a sufficient ExitFilled event is emitted on host within the same block.
+    // @param tokenIn_RU - The address of the token the user supplies as the input on the rollup for the trade.
+    // @param tokenOut_H - The address of the token the user expects to receive on host.
+    // @param recipient_H - The address of the recipient of tokenOut_H on host.
     // @param deadline - The deadline by which the exit order must be fulfilled.
-    // @param amountIn_RU - The amount of tokenIn_RU the user supplies as the input for the trade, which is transferred on the rollup.
-    // @param amountOutMinimum_MN - The minimum amount of tokenOut_MN the user expects to receive on mainnet.
+    // @param amountIn_RU - The amount of tokenIn_RU the user supplies as the input on the rollup for the trade.
+    // @param amountOutMinimum_H - The minimum amount of tokenOut_H the user expects to receive on host.
     // @custom:reverts Expired if the deadline has passed.
     // @custom:emits Exit if the exit transaction succeeds.
     function submitExit(
         address tokenIn_RU,
-        address tokenOut_MN,
-        address recipient_MN,
+        address tokenOut_H,
+        address recipient_H,
         uint256 deadline,
         uint256 amountIn_RU,
-        uint256 amountOutMinimum_MN
+        uint256 amountOutMinimum_H
     ) external {
         // check that the deadline hasn't passed
         if (block.timestamp >= deadline) revert Expired();
@@ -138,20 +141,20 @@ contract RollupPassage {
         IERC20(tokenIn_RU).transferFrom(msg.sender, address(this), amountIn_RU);
 
         // emit the exit event
-        emit Exit(tokenIn_RU, tokenOut_MN, recipient_MN, deadline, amountIn_RU, amountOutMinimum_MN);
+        emit Exit(tokenIn_RU, tokenOut_H, recipient_H, deadline, amountIn_RU, amountOutMinimum_H);
     }
 
     // @notice Expresses an intent to exit the rollup with native Ether.
     // @dev See `submitExit` above for dev details on how exits work.
-    // @dev tokenIn_MN is automatically set to address(0), native Ether.
+    // @dev tokenIn_RU is set to address(0), native rollup Ether.
     //      amountIn_RU is set to msg.value.
-    // @param tokenOut_MN - The address of the token the user expects to receive on mainnet.
-    // @param recipient_MN - The address of the recipient of tokenOut_MN on mainnet.
+    // @param tokenOut_H - The address of the token the user expects to receive on host.
+    // @param recipient_H - The address of the recipient of tokenOut_H on host.
     // @param deadline - The deadline by which the exit order must be fulfilled.
-    // @param amountOutMinimum_MN - The minimum amount of tokenOut_MN the user expects to receive on mainnet.
+    // @param amountOutMinimum_H - The minimum amount of tokenOut_H the user expects to receive on host.
     // @custom:reverts Expired if the deadline has passed.
     // @custom:emits Exit if the exit transaction succeeds.
-    function submitExit(address tokenOut_MN, address recipient_MN, uint256 deadline, uint256 amountOutMinimum_MN)
+    function submitExit(address tokenOut_H, address recipient_H, uint256 deadline, uint256 amountOutMinimum_H)
         external
         payable
     {
@@ -159,7 +162,7 @@ contract RollupPassage {
         if (block.timestamp >= deadline) revert Expired();
 
         // emit the exit event
-        emit Exit(address(0), tokenOut_MN, recipient_MN, deadline, msg.value, amountOutMinimum_MN);
+        emit Exit(address(0), tokenOut_H, recipient_H, deadline, msg.value, amountOutMinimum_H);
     }
 
     // @notice Transfer the entire balance of tokens to the recipient.

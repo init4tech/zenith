@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 // import openzeppelin Role contracts
-import {MainnetPassage} from "./Passage.sol";
+import {HostPassage} from "./Passage.sol";
 import {AccessControlDefaultAdminRules} from
     "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 
-contract Zenith is MainnetPassage, AccessControlDefaultAdminRules {
+contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     // @notice Role that allows an address to sign commitments to rollup blocks.
     bytes32 public constant SEQUENCER_ROLE = bytes32("SEQUENCER_ROLE");
 
