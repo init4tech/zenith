@@ -7,38 +7,43 @@ import {AccessControlDefaultAdminRules} from
     "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 
 contract Zenith is HostPassage, AccessControlDefaultAdminRules {
+    /// @notice Block header information for the rollup block, signed by the sequencer.
+    /// @param rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
+    /// @param sequence - the sequence number of the rollup block. Must be monotonically increasing. Enforced by the contract.
+    /// @param confirmBy - the timestamp by which the block must be submitted. Enforced by the contract.
+    /// @param gasLimit - the gas limit for the rollup block. Ignored by the contract; enforced by the Node.
+    /// @param rewardAddress - the address to receive the rollup block reward. Ignored by the contract; enforced by the Node.
     struct BlockHeader {
         uint256 rollupChainId;
         uint256 sequence;
-        uint256 gasLimit;
         uint256 confirmBy;
+        uint256 gasLimit;
         address rewardAddress;
     }
 
-    /// @notice Role that allows an address to sign commitments to rollup blocks.
+    /// @notice Role that allows a key to sign commitments to rollup blocks.
     bytes32 public constant SEQUENCER_ROLE = bytes32("SEQUENCER_ROLE");
 
-    /// @notice The sequence number of the next block that can be submitted.
+    /// @notice The sequence number of the next block that can be submitted for a given rollup chainId.
     /// rollupChainId => nextSequence number
     mapping(uint256 => uint256) public nextSequence;
 
-    /// @notice Thrown when a block submission is attempted with a sequence number that is not the next block.
-    /// @dev Blocks must be submitted in strict increasing order.
+    /// @notice Thrown when a block submission is attempted with a sequence number that is not the next block for the rollup chainId.
+    /// @dev Blocks must be submitted in strict monotonic increasing order.
     /// @param expected - the correct next sequence number for the given rollup chainId.
     error BadSequence(uint256 expected);
 
-    /// @notice Thrown when a block submission is attempted where confirmBy time has passed.
+    /// @notice Thrown when a block submission is attempted when the confirmBy time has passed.
     error BlockExpired();
 
-    /// @notice Thrown when a block submission is attempted with a signature over malformed data.
+    /// @notice Thrown when a block submission is attempted with a signature over different data.
     /// @param hashes - the encoded blob hashes attached to the transaction.
-    ///                 this is the most useful data to debug a bad signature off-chain.
     /// @param v - the v component of the Sequencer's ECSDA signature over the block commitment.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block commitment.
     /// @param s - the s component of the Sequencer's ECSDA signature over the block commitment.
     error BadSignature(bytes hashes, uint8 v, bytes32 r, bytes32 s);
 
-    /// @notice Thrown when a block submission is attempted signed by a non-permissioned sequencer.
+    /// @notice Thrown when a block submission is attempted with a signature by a non-permissioned sequencer.
     /// @param sequencer - the signer of the block data that is not a permissioned sequencer.
     error NotSequencer(address sequencer);
 
@@ -94,8 +99,8 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         emit BlockSubmitted(sequencer, header, blobIndices);
     }
 
-    /// @notice Construct hash of block details that the sequencer signs.
-    /// @dev See `getCommit` for hash data encoding.
+    /// @notice Construct hash of the block data that the sequencer signs.
+    /// @dev See `getCommit` for hashed data encoding.
     /// @dev Used to easily generate a correct commit hash off-chain for the sequencer to sign.
     /// @param header - the header information for the rollup block.
     /// @param blobHashes - the 4844 blob hashes for the block data.
