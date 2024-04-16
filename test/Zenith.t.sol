@@ -22,11 +22,11 @@ contract ZenithTest is Test {
         target.grantRole(target.SEQUENCER_ROLE(), vm.addr(sequencerKey));
 
         // set default block values
+        header.rollupChainId = block.chainid + 1;
+        header.sequence = 0; // first block has index
         header.confirmBy = block.timestamp + 10 minutes;
         header.gasLimit = 30_000_000;
         header.rewardAddress = address(this);
-        header.rollupChainId = block.chainid + 1;
-        header.sequence = 0; // first block has index
 
         // set default blob info
         blobIndices.push(0);
@@ -51,7 +51,7 @@ contract ZenithTest is Test {
 
     // cannot submit block with expired confirmBy time
     function test_blockExpired() public {
-        // change to incorrect sequence number
+        // change to expired confirmBy time
         header.confirmBy = block.timestamp - 1;
 
         // sign block commitmenet with sequencer key
@@ -64,7 +64,7 @@ contract ZenithTest is Test {
     // BLOCKED by PR supporting vm.blobhashes: https://github.com/foundry-rs/foundry/pull/7001
     // can submit block successfully with acceptable data & correct signature provided
     function BLOCKED_test_submitBlock() public {
-        // sign block commitmenet with sequencer key
+        // sign block commitmenet with correct sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
         // should emit BlockSubmitted event
