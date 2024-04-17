@@ -9,6 +9,6 @@ contract DeployZenith is Script {
     // forge script DeployZenith --sig "run()" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify
     function run() public {
         vm.broadcast();
-        new Zenith{salt: "zenith-3"}(msg.sender);
+        new Zenith(msg.sender);
     }
 }
