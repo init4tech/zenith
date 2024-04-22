@@ -20,7 +20,6 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param confirmBy - the timestamp by which the block must be submitted. Enforced by the contract.
     /// @param gasLimit - the gas limit for the rollup block. Ignored by the contract; enforced by the Node.
     /// @param rewardAddress - the address to receive the rollup block reward. Ignored by the contract; enforced by the Node.
-
     struct BlockHeader {
         uint256 rollupChainId;
         uint256 sequence;
@@ -55,6 +54,12 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param header - the block header information for the block.
     event BlockSubmitted(DataLocation indexed location, address indexed sequencer, BlockHeader indexed header);
 
+    /// @notice Emit the entire block data for easy visibility
+    event BlockData(bytes blockData);
+
+    /// @notice Emit the blob indices for easy visibility
+    event BlobIndices(uint32[] blobIndices);
+
     /// @notice Initializes the Admin role.
     /// @dev See `AccessControlDefaultAdminRules` for information on contract administration.
     ///      - Admin role can grant and revoke Sequencer roles.
@@ -72,6 +77,8 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @custom:emits see _submitBlock.
     function submitBlock(BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s) external {
         _submitBlock(DataLocation.Calldata, header, blockData, v, r, s);
+
+        emit BlockData(blockData);
     }
 
     /// @notice Submit a rollup block with block data stored in 4844 blobs.
@@ -90,6 +97,8 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         bytes memory encodedHashes = getHashes(blobIndices);
 
         _submitBlock(DataLocation.Blobs, header, encodedHashes, v, r, s);
+
+        emit BlobIndices(blobIndices);
     }
 
     /// @notice Submit a rollup block.
