@@ -122,29 +122,6 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         emit BlockSubmitted(location, sequencer, header);
     }
 
-    /// @notice Construct hash of the block data that the sequencer signs.
-    /// @dev See `getCommit` for hashed data encoding.
-    /// @dev Used to easily generate a correct commit hash off-chain for the sequencer to sign.
-    /// @param header - the header information for the rollup block.
-    /// @param blobHashes - the 4844 blob hashes for the block data.
-    /// @param commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header, bytes32[] memory blobHashes)
-        external
-        view
-        returns (bytes32 commit)
-    {
-        commit = blockCommitment(header, packHashes(blobHashes));
-    }
-
-    /// @notice Encode the array of blob hashes into a bytes string.
-    /// @param blobHashes - the 4844 blob hashes for the block data.
-    /// @return encodedHashes - the encoded blob hashes.
-    function packHashes(bytes32[] memory blobHashes) public pure returns (bytes memory encodedHashes) {
-        for (uint32 i = 0; i < blobHashes.length; i++) {
-            encodedHashes = abi.encodePacked(encodedHashes, blobHashes[i]);
-        }
-    }
-
     /// @notice Encode an array of blob hashes, given their indices in the transaction.
     /// @param blobIndices - the indices of the 4844 blob hashes for the block data.
     /// @return encodedHashes - the encoded blob hashes.
@@ -159,7 +136,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param committedData - the data for the rollup block that was signed by the sequencer. 
     ///                        if DataLocation = Blobs, this is the encoded blob hashes.
     /// @return commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header, bytes memory committedData) internal view returns (bytes32 commit) {
+    function blockCommitment(BlockHeader memory header, bytes memory committedData) public view returns (bytes32 commit) {
         bytes memory encoded = abi.encodePacked(
             "init4.sequencer.v0",
             block.chainid,

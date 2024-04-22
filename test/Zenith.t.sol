@@ -34,7 +34,16 @@ contract ZenithTest is Test {
         // TODO: vm.blobhashes(blobHashes);
 
         // derive block commitment from sequence number and blobhashes
-        commit = target.blockCommitment(header, blobHashes);
+        commit = target.blockCommitment(header, packHashes(blobHashes));
+    }
+
+    /// @notice Encode the array of blob hashes into a bytes string.
+    /// @param _blobHashes - the 4844 blob hashes for the block data.
+    /// @return encodedHashes - the encoded blob hashes.
+    function packHashes(bytes32[] memory _blobHashes) public pure returns (bytes memory encodedHashes) {
+        for (uint32 i = 0; i < _blobHashes.length; i++) {
+            encodedHashes = abi.encodePacked(encodedHashes, _blobHashes[i]);
+        }
     }
 
     // cannot submit block with incorrect sequence number
@@ -93,7 +102,7 @@ contract ZenithTest is Test {
         // change header data from what was signed by sequencer
         header.confirmBy = block.timestamp + 15 minutes;
 
-        bytes32 newCommit = target.blockCommitment(header, blobHashes);
+        bytes32 newCommit = target.blockCommitment(header, packHashes(blobHashes));
         address derivedSigner = ecrecover(newCommit, v, r, s);
 
         vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, derivedSigner));
@@ -108,7 +117,7 @@ contract ZenithTest is Test {
         blobHashes[0] = bytes32("DIFFERENT BLOBHASH");
         // TODO: vm.blobhashes(blobHashes);
 
-        bytes32 newCommit = target.blockCommitment(header, blobHashes);
+        bytes32 newCommit = target.blockCommitment(header, packHashes(blobHashes));
         address derivedSigner = ecrecover(newCommit, v, r, s);
 
         vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, derivedSigner));
