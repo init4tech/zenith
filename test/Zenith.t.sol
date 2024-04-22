@@ -81,7 +81,7 @@ contract ZenithTest is Test {
         // sign block commitmenet with NOT sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(notSequencerKey, commit);
 
-        vm.expectRevert(abi.encodeWithSelector(Zenith.NotSequencer.selector, vm.addr(notSequencerKey)));
+        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, vm.addr(notSequencerKey)));
         target.submitBlock(header, blobIndices, v, r, s);
     }
 
@@ -93,7 +93,10 @@ contract ZenithTest is Test {
         // change header data from what was signed by sequencer
         header.confirmBy = block.timestamp + 15 minutes;
 
-        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, target.packHashes(blobHashes), v, r, s));
+        bytes32 newCommit = target.blockCommitment(header, blobHashes);
+        address derivedSigner = ecrecover(newCommit, v, r, s);
+
+        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, derivedSigner));
         target.submitBlock(header, blobIndices, v, r, s);
     }
 
@@ -105,7 +108,10 @@ contract ZenithTest is Test {
         blobHashes[0] = bytes32("DIFFERENT BLOBHASH");
         // TODO: vm.blobhashes(blobHashes);
 
-        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, target.packHashes(blobHashes), v, r, s));
+        bytes32 newCommit = target.blockCommitment(header, blobHashes);
+        address derivedSigner = ecrecover(newCommit, v, r, s);
+
+        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, derivedSigner));
         target.submitBlock(header, blobIndices, v, r, s);
     }
 }

@@ -36,16 +36,10 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @notice Thrown when a block submission is attempted when the confirmBy time has passed.
     error BlockExpired();
 
-    /// @notice Thrown when a block submission is attempted with a signature over different data.
-    /// @param hashes - the encoded blob hashes attached to the transaction.
-    /// @param v - the v component of the Sequencer's ECSDA signature over the block commitment.
-    /// @param r - the r component of the Sequencer's ECSDA signature over the block commitment.
-    /// @param s - the s component of the Sequencer's ECSDA signature over the block commitment.
-    error BadSignature(bytes hashes, uint8 v, bytes32 r, bytes32 s);
-
-    /// @notice Thrown when a block submission is attempted with a signature by a non-permissioned sequencer.
-    /// @param sequencer - the signer of the block data that is not a permissioned sequencer.
-    error NotSequencer(address sequencer);
+    /// @notice Thrown when a block submission is attempted with a signature by a non-permissioned sequencer,
+    ///         OR when signature is produced over different data than is provided.
+    /// @param derivedSequencer - the derived signer of the block data that is not a permissioned sequencer.
+    error BadSignature(address derivedSequencer);
 
     /// @notice Emitted when a new rollup block is successfully submitted.
     /// @param sequencer - the address of the sequencer that signed the block.
@@ -69,8 +63,8 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param s - the s component of the Sequencer's ECSDA signature over the block commitment.
     /// @custom:reverts BadSequence if the sequence number is not the next block for the given rollup chainId.
     /// @custom:reverts BlockExpired if the confirmBy time has passed.
-    /// @custom:reverts BadSignature if the signature provided commits to different block data.
-    /// @custom:reverts NotSequencer if the signer is not a permissioned sequencer.
+    /// @custom:reverts BadSignature if the signer is not a permissioned sequencer, 
+    ///                 OR if the signature provided commits to different block data.
     /// @custom:emits BlockSubmitted if the block is successfully submitted.
     function submitBlock(BlockHeader memory header, uint32[] memory blobIndices, uint8 v, bytes32 r, bytes32 s)
         external
@@ -83,17 +77,13 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         if (block.timestamp > header.confirmBy) revert BlockExpired();
 
         // derive block commitment from sequence number and blobhashes
-        (bytes32 blockCommit, bytes memory hashes) = blockCommitment(header, blobIndices);
+        bytes32 blockCommit = blockCommitment(header, blobIndices);
 
         // derive sequencer from signature
         address sequencer = ecrecover(blockCommit, v, r, s);
 
-        // if the derived signer is address(0), the signature is invalid over the derived blockCommit
-        // emit the data required to inspect the signature off-chain
-        if (sequencer == address(0)) revert BadSignature(hashes, v, r, s);
-
-        // assert that sequencer is permissioned
-        if (!hasRole(SEQUENCER_ROLE, sequencer)) revert NotSequencer(sequencer);
+        // assert that signature is valid && sequencer is permissioned
+        if (!hasRole(SEQUENCER_ROLE, sequencer)) revert BadSignature(sequencer);
 
         // emit event
         emit BlockSubmitted(sequencer, header, blobIndices);
@@ -132,10 +122,9 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     function blockCommitment(BlockHeader memory header, uint32[] memory blobIndices)
         internal
         view
-        returns (bytes32 commit, bytes memory hashes)
+        returns (bytes32 commit)
     {
-        hashes = getHashes(blobIndices);
-        commit = getCommit(header, hashes);
+        commit = getCommit(header, getHashes(blobIndices));
     }
 
     /// @notice Encode an array of blob hashes, given their indices in the transaction.
