@@ -15,7 +15,7 @@ contract ZenithTest is Test {
     uint256 sequencerKey = 123;
     uint256 notSequencerKey = 300;
 
-    event BlockSubmitted(address indexed sequencer, Zenith.BlockHeader indexed header, uint32[] blobIndices);
+    event BlockSubmitted(Zenith.DataLocation indexed location, address indexed sequencer, Zenith.BlockHeader indexed header);
 
     function setUp() public {
         target = new Zenith(address(this));
@@ -69,7 +69,7 @@ contract ZenithTest is Test {
 
         // should emit BlockSubmitted event
         vm.expectEmit();
-        emit BlockSubmitted(vm.addr(sequencerKey), header, blobIndices);
+        emit BlockSubmitted(Zenith.DataLocation.Blobs, vm.addr(sequencerKey), header);
         target.submitBlock(header, blobIndices, v, r, s);
 
         // should increment sequence number

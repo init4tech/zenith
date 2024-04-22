@@ -7,6 +7,13 @@ import {AccessControlDefaultAdminRules} from
     "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 
 contract Zenith is HostPassage, AccessControlDefaultAdminRules {
+    /// @notice The location where the block data was submitted. 
+    /// @param Blobs - the block data was submitted as 4844 blobs. the `submitBlock` calldata contains `blobIndices` which can be used to pull the blobs / blob hashes.
+    /// @param Calldata - the block data was submitted directly via the `submitBlock` calldata.  
+    enum DataLocation {
+        Blobs,
+        Calldata
+    }
     /// @notice Block header information for the rollup block, signed by the sequencer.
     /// @param rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
     /// @param sequence - the sequence number of the rollup block. Must be monotonically increasing. Enforced by the contract.
@@ -42,10 +49,10 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     error BadSignature(address derivedSequencer);
 
     /// @notice Emitted when a new rollup block is successfully submitted.
+    /// @param location - the location where the block data was submitted.
     /// @param sequencer - the address of the sequencer that signed the block.
     /// @param header - the block header information for the block.
-    /// @param blobIndices - the indices of the 4844 blob hashes for the block data.
-    event BlockSubmitted(address indexed sequencer, BlockHeader indexed header, uint32[] blobIndices);
+    event BlockSubmitted(DataLocation indexed location, address indexed sequencer, BlockHeader indexed header);
 
     /// @notice Initializes the Admin role.
     /// @dev See `AccessControlDefaultAdminRules` for information on contract administration.
@@ -69,6 +76,14 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     function submitBlock(BlockHeader memory header, uint32[] memory blobIndices, uint8 v, bytes32 r, bytes32 s)
         external
     {
+        // query the blob hashes via the indices in order to
+        // ensure that the committed blob hashes are available in the transaction.
+        bytes memory encodedHashes = getHashes(blobIndices);
+
+        _submitBlock(DataLocation.Blobs, header, encodedHashes, v, r, s);
+    }
+
+    function _submitBlock(DataLocation location, BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s) internal {
         // assert that the sequence number is valid and increment it
         uint256 _nextSequence = nextSequence[header.rollupChainId]++;
         if (_nextSequence != header.sequence) revert BadSequence(_nextSequence);
@@ -77,7 +92,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         if (block.timestamp > header.confirmBy) revert BlockExpired();
 
         // derive block commitment from sequence number and blobhashes
-        bytes32 blockCommit = blockCommitment(header, blobIndices);
+        bytes32 blockCommit = blockCommitment(header, blockData);
 
         // derive sequencer from signature
         address sequencer = ecrecover(blockCommit, v, r, s);
@@ -86,7 +101,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         if (!hasRole(SEQUENCER_ROLE, sequencer)) revert BadSignature(sequencer);
 
         // emit event
-        emit BlockSubmitted(sequencer, header, blobIndices);
+        emit BlockSubmitted(location, sequencer, header);
     }
 
     /// @notice Construct hash of the block data that the sequencer signs.
@@ -100,7 +115,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         view
         returns (bytes32 commit)
     {
-        commit = getCommit(header, packHashes(blobHashes));
+        commit = blockCommitment(header, packHashes(blobHashes));
     }
 
     /// @notice Encode the array of blob hashes into a bytes string.
@@ -110,21 +125,6 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         for (uint32 i = 0; i < blobHashes.length; i++) {
             encodedHashes = abi.encodePacked(encodedHashes, blobHashes[i]);
         }
-    }
-
-    /// @notice Construct hash of block details that the sequencer signs.
-    /// @dev See `getCommit` for hash data encoding.
-    /// @dev Used within the transaction in which the block data is submitted as a 4844 blob.
-    ///      Relies on blob indices, which are used to read blob hashes from the transaction.
-    /// @param header - the header information for the rollup block.
-    /// @param blobIndices - the indices of the 4844 blob hashes for the block data.
-    /// @param commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header, uint32[] memory blobIndices)
-        internal
-        view
-        returns (bytes32 commit)
-    {
-        commit = getCommit(header, getHashes(blobIndices));
     }
 
     /// @notice Encode an array of blob hashes, given their indices in the transaction.
@@ -137,11 +137,11 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     }
 
     /// @notice Construct hash of block details that the sequencer signs.
-    /// @dev Hash is keccak256(abi.encodePacked("init4.sequencer.v0", hostChainId, rollupChainId, blockSequence, rollupGasLimit, confirmBy, rewardAddress, numBlobs, encodedBlobHashes))
     /// @param header - the header information for the rollup block.
-    /// @param encodedHashes - the encoded blob hashes.
+    /// @param committedData - the data for the rollup block that was signed by the sequencer. 
+    ///                        if DataLocation = Blobs, this is the encoded blob hashes.
     /// @return commit - the hash of the encoded block details.
-    function getCommit(BlockHeader memory header, bytes memory encodedHashes) internal view returns (bytes32 commit) {
+    function blockCommitment(BlockHeader memory header, bytes memory committedData) internal view returns (bytes32 commit) {
         bytes memory encoded = abi.encodePacked(
             "init4.sequencer.v0",
             block.chainid,
@@ -150,8 +150,8 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
             header.gasLimit,
             header.confirmBy,
             header.rewardAddress,
-            encodedHashes.length / 32,
-            encodedHashes
+            committedData.length,
+            committedData
         );
         commit = keccak256(encoded);
     }
