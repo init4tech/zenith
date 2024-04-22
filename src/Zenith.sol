@@ -7,9 +7,9 @@ import {AccessControlDefaultAdminRules} from
     "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 
 contract Zenith is HostPassage, AccessControlDefaultAdminRules {
-    /// @notice The location where the block data was submitted. 
+    /// @notice The location where the block data was submitted.
     /// @param Blobs - the block data was submitted as 4844 blobs. the `submitBlock` calldata contains `blobIndices` which can be used to pull the blobs / blob hashes.
-    /// @param Calldata - the block data was submitted directly via the `submitBlock` calldata.  
+    /// @param Calldata - the block data was submitted directly via the `submitBlock` calldata.
     enum DataLocation {
         Blobs,
         Calldata
@@ -20,6 +20,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param confirmBy - the timestamp by which the block must be submitted. Enforced by the contract.
     /// @param gasLimit - the gas limit for the rollup block. Ignored by the contract; enforced by the Node.
     /// @param rewardAddress - the address to receive the rollup block reward. Ignored by the contract; enforced by the Node.
+
     struct BlockHeader {
         uint256 rollupChainId;
         uint256 sequence;
@@ -61,18 +62,26 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param admin - the address that will be the initial admin.
     constructor(address admin) AccessControlDefaultAdminRules(1 days, admin) {}
 
+    /// @notice Submit a rollup block with block data submitted via calldata.
+    /// @param header - see _submitBlock.
+    /// @param blockData - full data for the block supplied directly.
+    /// @param v - see _submitBlock.
+    /// @param r - see _submitBlock.
+    /// @param s - see _submitBlock.
+    /// @custom:reverts see _submitBlock.
+    /// @custom:emits see _submitBlock.
+    function submitBlock(BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s) external {
+        _submitBlock(DataLocation.Calldata, header, blockData, v, r, s);
+    }
+
     /// @notice Submit a rollup block with block data stored in 4844 blobs.
-    /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
-    /// @param header - the header information for the rollup block.
+    /// @param header - see _submitBlock.
     /// @param blobIndices - the indices of the 4844 blob hashes for the block data.
-    /// @param v - the v component of the Sequencer's ECSDA signature over the block commitment.
-    /// @param r - the r component of the Sequencer's ECSDA signature over the block commitment.
-    /// @param s - the s component of the Sequencer's ECSDA signature over the block commitment.
-    /// @custom:reverts BadSequence if the sequence number is not the next block for the given rollup chainId.
-    /// @custom:reverts BlockExpired if the confirmBy time has passed.
-    /// @custom:reverts BadSignature if the signer is not a permissioned sequencer, 
-    ///                 OR if the signature provided commits to different block data.
-    /// @custom:emits BlockSubmitted if the block is successfully submitted.
+    /// @param v - see _submitBlock.
+    /// @param r - see _submitBlock.
+    /// @param s - see _submitBlock.
+    /// @custom:reverts see _submitBlock.
+    /// @custom:emits see _submitBlock.
     function submitBlock(BlockHeader memory header, uint32[] memory blobIndices, uint8 v, bytes32 r, bytes32 s)
         external
     {
@@ -83,25 +92,52 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         _submitBlock(DataLocation.Blobs, header, encodedHashes, v, r, s);
     }
 
-    /// @notice Submit a rollup block with block data submitted via calldata.
+    /// @notice Construct hash of block details that the sequencer signs.
+    /// @param header - the header information for the rollup block.
+    /// @param committedData - the data for the rollup block that was signed by the sequencer.
+    ///                        if DataLocation = Blobs, committedData = encoded blob hashes.
+    ///                        if DataLocation = Blobs, committedData = full block data.
+    /// @return commit - the hash of the encoded block details.
+    function blockCommitment(BlockHeader memory header, bytes memory committedData)
+        public
+        view
+        returns (bytes32 commit)
+    {
+        bytes memory encoded = abi.encodePacked(
+            "init4.sequencer.v0",
+            block.chainid,
+            header.rollupChainId,
+            header.sequence,
+            header.gasLimit,
+            header.confirmBy,
+            header.rewardAddress,
+            committedData.length,
+            committedData
+        );
+        commit = keccak256(encoded);
+    }
+
+    /// @notice Submit a rollup block.
     /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
     /// @param header - the header information for the rollup block.
-    /// @param blockData - full data for the block supplied directly.
+    /// @param committedData - if DataLocation = Blobs, committedData = encoded blob hashes for the blobs where the block data resides.
+    ///                        if DataLocation = Calldata, committedData = full block data.
     /// @param v - the v component of the Sequencer's ECSDA signature over the block commitment.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block commitment.
     /// @param s - the s component of the Sequencer's ECSDA signature over the block commitment.
     /// @custom:reverts BadSequence if the sequence number is not the next block for the given rollup chainId.
     /// @custom:reverts BlockExpired if the confirmBy time has passed.
-    /// @custom:reverts BadSignature if the signer is not a permissioned sequencer, 
+    /// @custom:reverts BadSignature if the signer is not a permissioned sequencer,
     ///                 OR if the signature provided commits to different block data.
     /// @custom:emits BlockSubmitted if the block is successfully submitted.
-    function submitBlock(BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s)
-        external
-    {
-        _submitBlock(DataLocation.Calldata, header, blockData, v, r, s);
-    }
-
-    function _submitBlock(DataLocation location, BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s) internal {
+    function _submitBlock(
+        DataLocation location,
+        BlockHeader memory header,
+        bytes memory committedData,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) internal {
         // assert that the sequence number is valid and increment it
         uint256 _nextSequence = nextSequence[header.rollupChainId]++;
         if (_nextSequence != header.sequence) revert BadSequence(_nextSequence);
@@ -110,7 +146,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         if (block.timestamp > header.confirmBy) revert BlockExpired();
 
         // derive block commitment from sequence number and blobhashes
-        bytes32 blockCommit = blockCommitment(header, blockData);
+        bytes32 blockCommit = blockCommitment(header, committedData);
 
         // derive sequencer from signature
         address sequencer = ecrecover(blockCommit, v, r, s);
@@ -129,25 +165,5 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         for (uint32 i = 0; i < blobIndices.length; i++) {
             encodedHashes = abi.encodePacked(encodedHashes, blobhash(blobIndices[i]));
         }
-    }
-
-    /// @notice Construct hash of block details that the sequencer signs.
-    /// @param header - the header information for the rollup block.
-    /// @param committedData - the data for the rollup block that was signed by the sequencer. 
-    ///                        if DataLocation = Blobs, this is the encoded blob hashes.
-    /// @return commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header, bytes memory committedData) public view returns (bytes32 commit) {
-        bytes memory encoded = abi.encodePacked(
-            "init4.sequencer.v0",
-            block.chainid,
-            header.rollupChainId,
-            header.sequence,
-            header.gasLimit,
-            header.confirmBy,
-            header.rewardAddress,
-            committedData.length,
-            committedData
-        );
-        commit = keccak256(encoded);
     }
 }
