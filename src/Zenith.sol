@@ -92,31 +92,6 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         _submitBlock(DataLocation.Blobs, header, encodedHashes, v, r, s);
     }
 
-    /// @notice Construct hash of block details that the sequencer signs.
-    /// @param header - the header information for the rollup block.
-    /// @param committedData - the data for the rollup block that was signed by the sequencer.
-    ///                        if DataLocation = Blobs, committedData = encoded blob hashes.
-    ///                        if DataLocation = Blobs, committedData = full block data.
-    /// @return commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header, bytes memory committedData)
-        public
-        view
-        returns (bytes32 commit)
-    {
-        bytes memory encoded = abi.encodePacked(
-            "init4.sequencer.v0",
-            block.chainid,
-            header.rollupChainId,
-            header.sequence,
-            header.gasLimit,
-            header.confirmBy,
-            header.rewardAddress,
-            committedData.length,
-            committedData
-        );
-        commit = keccak256(encoded);
-    }
-
     /// @notice Submit a rollup block.
     /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
     /// @param header - the header information for the rollup block.
@@ -165,5 +140,30 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         for (uint32 i = 0; i < blobIndices.length; i++) {
             encodedHashes = abi.encodePacked(encodedHashes, blobhash(blobIndices[i]));
         }
+    }
+
+    /// @notice Construct hash of block details that the sequencer signs.
+    /// @param header - the header information for the rollup block.
+    /// @param committedData - the data for the rollup block that was signed by the sequencer.
+    ///                        if DataLocation = Blobs, committedData = encoded blob hashes.
+    ///                        if DataLocation = Blobs, committedData = full block data.
+    /// @return commit - the hash of the encoded block details.
+    function blockCommitment(BlockHeader memory header, bytes memory committedData)
+        public
+        view
+        returns (bytes32 commit)
+    {
+        bytes memory encoded = abi.encodePacked(
+            "init4.sequencer.v0",
+            block.chainid,
+            header.rollupChainId,
+            header.sequence,
+            header.gasLimit,
+            header.confirmBy,
+            header.rewardAddress,
+            committedData.length,
+            committedData
+        );
+        commit = keccak256(encoded);
     }
 }
