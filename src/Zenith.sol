@@ -83,6 +83,24 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         _submitBlock(DataLocation.Blobs, header, encodedHashes, v, r, s);
     }
 
+    /// @notice Submit a rollup block with block data submitted via calldata.
+    /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
+    /// @param header - the header information for the rollup block.
+    /// @param blockData - full data for the block supplied directly.
+    /// @param v - the v component of the Sequencer's ECSDA signature over the block commitment.
+    /// @param r - the r component of the Sequencer's ECSDA signature over the block commitment.
+    /// @param s - the s component of the Sequencer's ECSDA signature over the block commitment.
+    /// @custom:reverts BadSequence if the sequence number is not the next block for the given rollup chainId.
+    /// @custom:reverts BlockExpired if the confirmBy time has passed.
+    /// @custom:reverts BadSignature if the signer is not a permissioned sequencer, 
+    ///                 OR if the signature provided commits to different block data.
+    /// @custom:emits BlockSubmitted if the block is successfully submitted.
+    function submitBlock(BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s)
+        external
+    {
+        _submitBlock(DataLocation.Calldata, header, blockData, v, r, s);
+    }
+
     function _submitBlock(DataLocation location, BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s) internal {
         // assert that the sequence number is valid and increment it
         uint256 _nextSequence = nextSequence[header.rollupChainId]++;
