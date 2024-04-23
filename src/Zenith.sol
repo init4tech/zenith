@@ -28,6 +28,10 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// rollupChainId => nextSequence number
     mapping(uint256 => uint256) public nextSequence;
 
+    /// @notice The host block number that a block was last submitted at for a given rollup chainId.
+    /// rollupChainId => host blockNumber that block was last submitted at
+    mapping(uint256 => uint256) public lastSubmittedAtBlock;
+
     /// @notice Thrown when a block submission is attempted with a sequence number that is not the next block for the rollup chainId.
     /// @dev Blocks must be submitted in strict monotonic increasing order.
     /// @param expected - the correct next sequence number for the given rollup chainId.
@@ -40,6 +44,9 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     ///         OR when signature is produced over different data than is provided.
     /// @param derivedSequencer - the derived signer of the block data that is not a permissioned sequencer.
     error BadSignature(address derivedSequencer);
+
+    /// @notice Thrown when attempting to submit more than one rollup block per host block
+    error OneRollupBlockPerHostBlock();
 
     /// @notice Emitted when a new rollup block is successfully submitted.
     /// @param sequencer - the address of the sequencer that signed the block.
@@ -100,6 +107,9 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         // assert that signature is valid && sequencer is permissioned
         if (!hasRole(SEQUENCER_ROLE, sequencer)) revert BadSignature(sequencer);
 
+        // assert this is the first rollup block submitted for this host block
+        if (lastSubmittedAtBlock[header.rollupChainId] == block.number) revert OneRollupBlockPerHostBlock();
+        lastSubmittedAtBlock[header.rollupChainId] = block.number;
 
         // emit event
         emit BlockSubmitted(sequencer, header, blockDataHash);

@@ -97,5 +97,25 @@ contract ZenithTest is Test {
         vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, derivedSigner));
         target.submitBlock(header, blockDataHash, v, r, s, blockData);
     }
+
+    // cannot submit two rollup blocks within one host block
+    function test_onePerBlock() public {
+        // sign block commitmenet with correct sequencer key
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
+
+        // should emit BlockSubmitted event
+        vm.expectEmit();
+        emit BlockSubmitted(vm.addr(sequencerKey), header, blockDataHash);
+        target.submitBlock(header, blockDataHash, v, r, s, blockData);
+
+        // incerement the header sequence
+        header.sequence += 1;
+        commit = target.blockCommitment(header, blockDataHash);
+        (v, r, s) = vm.sign(sequencerKey, commit);
+
+        // should revert with OneRollupBlockPerHostBlock
+        // (NOTE: this test works because forge does not increment block.number when it mines a transaction)
+        vm.expectRevert(abi.encodeWithSelector(Zenith.OneRollupBlockPerHostBlock.selector));
+        target.submitBlock(header, blockDataHash, v, r, s, blockData);
     }
 }
