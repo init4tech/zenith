@@ -20,6 +20,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param confirmBy - the timestamp by which the block must be submitted. Enforced by the contract.
     /// @param gasLimit - the gas limit for the rollup block. Ignored by the contract; enforced by the Node.
     /// @param rewardAddress - the address to receive the rollup block reward. Ignored by the contract; enforced by the Node.
+
     struct BlockHeader {
         uint256 rollupChainId;
         uint256 sequence;
@@ -75,8 +76,10 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param s - see _submitBlock.
     /// @custom:reverts see _submitBlock.
     /// @custom:emits see _submitBlock.
-    function submitBlock(BlockHeader memory header, bytes memory blockData, uint8 v, bytes32 r, bytes32 s) external {
-        _submitBlock(DataLocation.Calldata, header, blockData, v, r, s);
+    function submitBlock(BlockHeader memory header, bytes calldata blockData, uint8 v, bytes32 r, bytes32 s) external {
+        bytes32 blockCommit = blockCommitment(header, blockData);
+
+        _submitBlock(DataLocation.Calldata, header, blockCommit, v, r, s);
 
         emit BlockData(blockData);
     }
@@ -89,14 +92,12 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @param s - see _submitBlock.
     /// @custom:reverts see _submitBlock.
     /// @custom:emits see _submitBlock.
-    function submitBlock(BlockHeader memory header, uint32[] memory blobIndices, uint8 v, bytes32 r, bytes32 s)
+    function submitBlock(BlockHeader memory header, uint32[] calldata blobIndices, uint8 v, bytes32 r, bytes32 s)
         external
     {
-        // query the blob hashes via the indices in order to
-        // ensure that the committed blob hashes are available in the transaction.
-        bytes memory encodedHashes = getHashes(blobIndices);
+        bytes32 blockCommit = blockCommitment(header, blobIndices);
 
-        _submitBlock(DataLocation.Blobs, header, encodedHashes, v, r, s);
+        _submitBlock(DataLocation.Blobs, header, blockCommit, v, r, s);
 
         emit BlobIndices(blobIndices);
     }
@@ -104,8 +105,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @notice Submit a rollup block.
     /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
     /// @param header - the header information for the rollup block.
-    /// @param committedData - if DataLocation = Blobs, committedData = encoded blob hashes for the blobs where the block data resides.
-    ///                        if DataLocation = Calldata, committedData = full block data.
+    /// @param blockCommit - the hashes `blockCommitment` signed by the Sequencer.
     /// @param v - the v component of the Sequencer's ECSDA signature over the block commitment.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block commitment.
     /// @param s - the s component of the Sequencer's ECSDA signature over the block commitment.
@@ -117,7 +117,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     function _submitBlock(
         DataLocation location,
         BlockHeader memory header,
-        bytes memory committedData,
+        bytes32 blockCommit,
         uint8 v,
         bytes32 r,
         bytes32 s
@@ -128,9 +128,6 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
 
         // assert that confirmBy time has not passed
         if (block.timestamp > header.confirmBy) revert BlockExpired();
-
-        // derive block commitment from sequence number and blobhashes
-        bytes32 blockCommit = blockCommitment(header, committedData);
 
         // derive sequencer from signature
         address sequencer = ecrecover(blockCommit, v, r, s);
@@ -145,19 +142,18 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @notice Encode an array of blob hashes, given their indices in the transaction.
     /// @param blobIndices - the indices of the 4844 blob hashes for the block data.
     /// @return encodedHashes - the encoded blob hashes.
-    function getHashes(uint32[] memory blobIndices) internal view returns (bytes memory encodedHashes) {
+    function getHashes(uint32[] calldata blobIndices) internal view returns (bytes memory encodedHashes) {
         for (uint32 i = 0; i < blobIndices.length; i++) {
             encodedHashes = abi.encodePacked(encodedHashes, blobhash(blobIndices[i]));
         }
     }
 
     /// @notice Construct hash of block details that the sequencer signs.
+    /// @dev NOTE: we have separate blockCommitment functions in order to keep `blockData` as `calldata`, which is not possible for `encodedHashes`
     /// @param header - the header information for the rollup block.
-    /// @param committedData - the data for the rollup block that was signed by the sequencer.
-    ///                        if DataLocation = Blobs, committedData = encoded blob hashes.
-    ///                        if DataLocation = Blobs, committedData = full block data.
+    /// @param blockData - full data for the block supplied directly.
     /// @return commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header, bytes memory committedData)
+    function blockCommitment(BlockHeader memory header, bytes calldata blockData)
         public
         view
         returns (bytes32 commit)
@@ -170,8 +166,35 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
             header.gasLimit,
             header.confirmBy,
             header.rewardAddress,
-            committedData.length,
-            committedData
+            blockData.length,
+            blockData
+        );
+        commit = keccak256(encoded);
+    }
+
+    /// @notice Construct hash of block details that the sequencer signs.
+    /// @param header - the header information for the rollup block.
+    /// @param blobIndices - the indices of the 4844 blob hashes for the block data.
+    /// @return commit - the hash of the encoded block details.
+    function blockCommitment(BlockHeader memory header, uint32[] calldata blobIndices)
+        public
+        view
+        returns (bytes32 commit)
+    {
+        // query the blob hashes via the indices in order to
+        // ensure that the committed blob hashes are available in the transaction.
+        bytes memory encodedHashes = getHashes(blobIndices);
+
+        bytes memory encoded = abi.encodePacked(
+            "init4.sequencer.v0",
+            block.chainid,
+            header.rollupChainId,
+            header.sequence,
+            header.gasLimit,
+            header.confirmBy,
+            header.rewardAddress,
+            encodedHashes.length,
+            encodedHashes
         );
         commit = keccak256(encoded);
     }
