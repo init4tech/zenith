@@ -44,7 +44,8 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @notice Emitted when a new rollup block is successfully submitted.
     /// @param sequencer - the address of the sequencer that signed the block.
     /// @param header - the block header information for the block.
-    event BlockSubmitted(address indexed sequencer, BlockHeader indexed header);
+    /// @param blockDataHash - keccak256(blockData). the Node will discard the block if the hash doens't match.
+    event BlockSubmitted(address indexed sequencer, BlockHeader indexed header, bytes32 blockDataHash);
 
     /// @notice Emit the entire block data for easy visibility
     event BlockData(bytes blockData);
@@ -59,10 +60,12 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @notice Submit a rollup block with block data submitted via calldata.
     /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
     /// @param header - the header information for the rollup block.
-    /// @param blockData - block data information. could be blob hashes / indices, or direct rlp-encoded transctions. blockData is ignored by the contract logic.
+    /// @param blockDataHash - keccak256(blockData). the Node will discard the block if the hash doens't match.
+    /// @dev including blockDataHash allows the sequencer to sign over finalized block data, without needing to calldatacopy the `blockData` param.
     /// @param v - the v component of the Sequencer's ECSDA signature over the block header.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block header.
     /// @param s - the s component of the Sequencer's ECSDA signature over the block header.
+    /// @param blockData - block data information. could be packed blob hashes, or direct rlp-encoded transctions. blockData is ignored by the contract logic.
     /// @custom:reverts BadSequence if the sequence number is not the next block for the given rollup chainId.
     /// @custom:reverts BlockExpired if the confirmBy time has passed.
     /// @custom:reverts BadSignature if the signer is not a permissioned sequencer,
@@ -70,12 +73,19 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     /// @custom:reverts OneRollupBlockPerHostBlock if attempting to submit a second rollup block within one host block.
     /// @custom:emits BlockSubmitted if the block is successfully submitted.
     /// @custom:emits BlockData to expose the block calldata; as a convenience until calldata tracing is implemented in the Node.
-    function submitBlock(BlockHeader memory header, uint8 v, bytes32 r, bytes32 s, bytes calldata blockData) external {
-        _submitBlock(header, v, r, s);
+    function submitBlock(
+        BlockHeader memory header,
+        bytes32 blockDataHash,
+        uint8 v,
+        bytes32 r,
+        bytes32 s,
+        bytes calldata blockData
+    ) external {
+        _submitBlock(header, blockDataHash, v, r, s);
         emit BlockData(blockData);
     }
 
-    function _submitBlock(BlockHeader memory header, uint8 v, bytes32 r, bytes32 s) internal {
+    function _submitBlock(BlockHeader memory header, bytes32 blockDataHash, uint8 v, bytes32 r, bytes32 s) internal {
         // assert that the sequence number is valid and increment it
         uint256 _nextSequence = nextSequence[header.rollupChainId]++;
         if (_nextSequence != header.sequence) revert BadSequence(_nextSequence);
@@ -84,7 +94,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
         if (block.timestamp > header.confirmBy) revert BlockExpired();
 
         // derive sequencer from signature over block header
-        bytes32 blockCommit = blockCommitment(header);
+        bytes32 blockCommit = blockCommitment(header, blockDataHash);
         address sequencer = ecrecover(blockCommit, v, r, s);
 
         // assert that signature is valid && sequencer is permissioned
@@ -92,13 +102,13 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
 
 
         // emit event
-        emit BlockSubmitted(sequencer, header);
+        emit BlockSubmitted(sequencer, header, blockDataHash);
     }
 
     /// @notice Construct hash of block details that the sequencer signs.
     /// @param header - the header information for the rollup block.
     /// @return commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header) public view returns (bytes32 commit) {
+    function blockCommitment(BlockHeader memory header, bytes32 blockDataHash) public view returns (bytes32 commit) {
         bytes memory encoded = abi.encodePacked(
             "init4.sequencer.v0",
             block.chainid,
@@ -106,7 +116,8 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
             header.sequence,
             header.gasLimit,
             header.confirmBy,
-            header.rewardAddress
+            header.rewardAddress,
+            blockDataHash
         );
         commit = keccak256(encoded);
     }

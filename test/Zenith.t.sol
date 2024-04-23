@@ -11,11 +11,12 @@ contract ZenithTest is Test {
     bytes32 commit;
     /// @dev blockData is ignored by the contract. it's included for the purpose of DA for the node.
     bytes blockData = "0x1234567890abcdef";
+    bytes32 blockDataHash;
 
     uint256 sequencerKey = 123;
     uint256 notSequencerKey = 300;
 
-    event BlockSubmitted(address indexed sequencer, Zenith.BlockHeader indexed header);
+    event BlockSubmitted(address indexed sequencer, Zenith.BlockHeader indexed header, bytes32 blockDataHash);
 
     function setUp() public {
         target = new Zenith(address(this));
@@ -28,34 +29,36 @@ contract ZenithTest is Test {
         header.gasLimit = 30_000_000;
         header.rewardAddress = address(this);
 
+        blockDataHash = keccak256(blockData);
+
         // derive block commitment from the header
-        commit = target.blockCommitment(header);
+        commit = target.blockCommitment(header, blockDataHash);
     }
 
     // cannot submit block with incorrect sequence number
     function test_badSequence() public {
         // change to incorrect sequence number
         header.sequence = 1;
-        commit = target.blockCommitment(header);
+        commit = target.blockCommitment(header, blockDataHash);
 
         // sign block commitmenet with sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
         vm.expectRevert(abi.encodeWithSelector(Zenith.BadSequence.selector, 0));
-        target.submitBlock(header, v, r, s, blockData);
+        target.submitBlock(header, blockDataHash, v, r, s, blockData);
     }
 
     // cannot submit block with expired confirmBy time
     function test_blockExpired() public {
         // change to expired confirmBy time
         header.confirmBy = block.timestamp - 1;
-        commit = target.blockCommitment(header);
+        commit = target.blockCommitment(header, blockDataHash);
 
         // sign block commitmenet with sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
         vm.expectRevert(abi.encodeWithSelector(Zenith.BlockExpired.selector));
-        target.submitBlock(header, v, r, s, blockData);
+        target.submitBlock(header, blockDataHash, v, r, s, blockData);
     }
 
     // can submit block successfully with acceptable header & correct signature provided
@@ -65,8 +68,8 @@ contract ZenithTest is Test {
 
         // should emit BlockSubmitted event
         vm.expectEmit();
-        emit BlockSubmitted(vm.addr(sequencerKey), header);
-        target.submitBlock(header, v, r, s, blockData);
+        emit BlockSubmitted(vm.addr(sequencerKey), header, blockDataHash);
+        target.submitBlock(header, blockDataHash, v, r, s, blockData);
 
         // should increment sequence number
         assertEq(target.nextSequence(header.rollupChainId), header.sequence + 1);
@@ -78,7 +81,7 @@ contract ZenithTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(notSequencerKey, commit);
 
         vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, vm.addr(notSequencerKey)));
-        target.submitBlock(header, v, r, s, blockData);
+        target.submitBlock(header, blockDataHash, v, r, s, blockData);
     }
 
     // cannot submit block with sequencer signature over different block header data
@@ -88,10 +91,11 @@ contract ZenithTest is Test {
 
         // change header data from what was signed by sequencer
         header.confirmBy = block.timestamp + 15 minutes;
-        bytes32 newCommit = target.blockCommitment(header);
+        bytes32 newCommit = target.blockCommitment(header, blockDataHash);
         address derivedSigner = ecrecover(newCommit, v, r, s);
 
         vm.expectRevert(abi.encodeWithSelector(Zenith.BadSignature.selector, derivedSigner));
-        target.submitBlock(header, v, r, s, blockData);
+        target.submitBlock(header, blockDataHash, v, r, s, blockData);
+    }
     }
 }
