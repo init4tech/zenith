@@ -93,15 +93,23 @@ contract HostPassage {
     ///      the Builder may transfer the cumulative tokenOut to the user in a single ExitFilled event.
     ///      The rollup STF will apply the user's exit transactions on the rollup up to the point that sum(tokenOut) is lte the ExitFilled amount.
     /// TODO: add option to fulfill ExitOrders with native ETH? or is it sufficient to only allow users to exit via WETH?
-    function fulfillExits(ExitOrder[] calldata orders) external {
+    function fulfillExits(ExitOrder[] calldata orders) external payable {
+        uint256 etherTransferred = msg.value;
         for (uint256 i = 0; i < orders.length; i++) {
-            ExitOrder memory order = orders[i];
             // check that the deadline hasn't passed
-            if (block.timestamp > order.deadline) revert OrderExpired();
-            // transfer tokens to the recipient
-            IERC20(order.token).transferFrom(msg.sender, order.recipient, order.amount);
+            if (block.timestamp > orders[i].deadline) revert OrderExpired();
+            // transfer value
+            if (orders[i].token == address(0)) {
+                // transfer native Ether to the recipient
+                payable(orders[i].recipient).transfer(orders[i].amount);
+                // NOTE: this will underflow if sender attempts to transfer more Ether than they sent to the contract
+                etherTransferred -= orders[i].amount;
+            } else {
+                // transfer tokens to the recipient
+                IERC20(orders[i].token).transferFrom(msg.sender, orders[i].recipient, orders[i].amount);
+            }
             // emit
-            emit ExitFilled(order.token, order.recipient, order.amount);
+            emit ExitFilled(orders[i].rollupChainId, orders[i].token, orders[i].recipient, orders[i].amount);
         }
     }
 }
