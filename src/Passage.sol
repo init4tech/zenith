@@ -67,6 +67,18 @@ contract HostPassage {
         emit Enter(rollupChainId, address(0), rollupRecipient, msg.value);
     }
 
+    /// @notice Allows ERC20s to enter the rollup.
+    /// @dev Permanently burns the token amount by locking it in this contract.
+    /// @param rollupChainId - The rollup chain to enter.
+    /// @param rollupRecipient - The recipient of the Ether on the rollup.
+    /// @param token - The address of the ERC20 token on the Host.
+    /// @param amount - The amount of the ERC20 token to transfer to the rollup.
+    /// @custom:emits Enter indicatig the amount of tokens to mint on the rollup & its recipient.
+    function enter(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public payable {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        emit Enter(rollupChainId, token, rollupRecipient, amount);
+    }
+
     /// @notice Fulfills exit orders by transferring tokenOut to the recipient
     /// @param orders The exit orders to fulfill
     /// @custom:emits ExitFilled for each exit order fulfilled.
