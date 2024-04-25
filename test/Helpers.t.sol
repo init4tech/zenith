@@ -9,7 +9,7 @@ contract HelpersTest is Test {
 
     function setUp() public {
         vm.createSelectFork("https://rpc.holesky.ethpandaops.io");
-        target = new Zenith(0x0a53e650c6f015eF70a15Da7B18fa95F051465aB);
+        target = new Zenith(block.chainid + 1, 0x0a53e650c6f015eF70a15Da7B18fa95F051465aB);
     }
 
     function test_signature() public {
