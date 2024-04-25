@@ -163,7 +163,7 @@ contract RollupPassage {
     /// @param amountOutMinimum_H - The minimum amount of tokenOut_H the user expects to receive on host.
     /// @custom:reverts Expired if the deadline has passed.
     /// @custom:emits Exit if the exit transaction succeeds.
-    function submitExit(address tokenOut_H, address recipient_H, uint256 deadline, uint256 amountOutMinimum_H)
+    function submitEthExit(address tokenOut_H, address recipient_H, uint256 deadline, uint256 amountOutMinimum_H)
         external
         payable
     {
@@ -192,7 +192,7 @@ contract RollupPassage {
     /// @dev Called by the Builder within the same block as `submitExit` transactions to claim the amounts of native Ether.
     /// @dev Builder MUST ensure that no other account calls `sweepETH` before them.
     /// @param recipient - The address to receive the native Ether.
-    function sweepETH(address payable recipient) public {
+    function sweepEth(address payable recipient) public {
         recipient.transfer(address(this).balance);
         emit Sweep(recipient);
     }
