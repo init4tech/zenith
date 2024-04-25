@@ -62,7 +62,10 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     ///      - Admin role can grant and revoke Sequencer roles.
     ///      - Admin role can be transferred via two-step process with a 1 day timelock.
     /// @param admin - the address that will be the initial admin.
-    constructor(address admin) AccessControlDefaultAdminRules(1 days, admin) {}
+    constructor(uint256 defaultRollupChainId, address admin)
+        HostPassage(defaultRollupChainId)
+        AccessControlDefaultAdminRules(1 days, admin)
+    {}
 
     /// @notice Submit a rollup block with block data submitted via calldata.
     /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.

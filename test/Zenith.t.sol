@@ -19,7 +19,7 @@ contract ZenithTest is Test {
     event BlockSubmitted(address indexed sequencer, Zenith.BlockHeader indexed header, bytes32 blockDataHash);
 
     function setUp() public {
-        target = new Zenith(address(this));
+        target = new Zenith(block.chainid + 1, address(this));
         target.grantRole(target.SEQUENCER_ROLE(), vm.addr(sequencerKey));
 
         // set default block values

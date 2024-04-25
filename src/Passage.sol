@@ -7,6 +7,9 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
 contract HostPassage {
+    /// @notice The chainId of the default rollup chain.
+    uint256 immutable defaultRollupChainId;
+
     /// @notice Thrown when attempting to fulfill an exit order with a deadline that has passed.
     error OrderExpired();
 
@@ -14,13 +17,13 @@ contract HostPassage {
     /// @param token - The address of the token entering the rollup.
     /// @param rollupRecipient - The recipient of the token on the rollup.
     /// @param amount - The amount of the token entering the rollup.
-    event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
+    event Enter(uint256 rollupChainId, address indexed token, address indexed rollupRecipient, uint256 amount);
 
     /// @notice Emitted when an exit order is fulfilled by the Builder.
     /// @param token - The address of the token transferred to the recipient.
     /// @param hostRecipient - The recipient of the token on host.
     /// @param amount - The amount of the token transferred to the recipient.
-    event ExitFilled(address indexed token, address indexed hostRecipient, uint256 amount);
+    event ExitFilled(uint256 rollupChainId, address indexed token, address indexed hostRecipient, uint256 amount);
 
     /// @notice Details of an exit order to be fulfilled by the Builder.
     /// @param token - The address of the token to be transferred to the recipient.
@@ -34,28 +37,34 @@ contract HostPassage {
     ///                   Corresponds to deadline in the RollupPassage contract.
     ///                   If the ExitOrder is a combination of multiple orders, the deadline SHOULD be the latest of all orders.
     struct ExitOrder {
+        uint256 rollupChainId;
         address token;
         address recipient;
         uint256 amount;
         uint256 deadline;
     }
 
+    constructor(uint256 _defaultRollupChainId) {
+        defaultRollupChainId = _defaultRollupChainId;
+    }
+
     /// @notice Allows native Ether to enter the rollup by being sent directly to the contract.
     fallback() external payable {
-        enter(msg.sender);
+        enter(defaultRollupChainId, msg.sender);
     }
 
     /// @notice Allows native Ether to enter the rollup by being sent directly to the contract.
     receive() external payable {
-        enter(msg.sender);
+        enter(defaultRollupChainId, msg.sender);
     }
 
     /// @notice Allows native Ether to enter the rollup.
     /// @dev Permanently burns the entire msg.value by locking it in this contract.
+    /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
     /// @custom:emits Enter indicatig the amount of Ether to mint on the rollup & its recipient.
-    function enter(address rollupRecipient) public payable {
-        emit Enter(address(0), rollupRecipient, msg.value);
+    function enter(uint256 rollupChainId, address rollupRecipient) public payable {
+        emit Enter(rollupChainId, address(0), rollupRecipient, msg.value);
     }
 
     /// @notice Fulfills exit orders by transferring tokenOut to the recipient
