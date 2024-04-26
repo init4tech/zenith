@@ -58,7 +58,7 @@ contract HostPassage {
     /// @dev Permanently burns the entire msg.value by locking it in this contract.
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
-    /// @custom:emits Enter indicatig the amount of Ether to mint on the rollup & its recipient.
+    /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
     function enter(uint256 rollupChainId, address rollupRecipient) public payable {
         emit Enter(rollupChainId, address(0), rollupRecipient, msg.value);
     }
@@ -69,7 +69,7 @@ contract HostPassage {
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
     /// @param token - The address of the ERC20 token on the Host.
     /// @param amount - The amount of the ERC20 token to transfer to the rollup.
-    /// @custom:emits Enter indicatig the amount of tokens to mint on the rollup & its recipient.
+    /// @custom:emits Enter indicating the amount of tokens to mint on the rollup & its recipient.
     function enter(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public payable {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         emit Enter(rollupChainId, token, rollupRecipient, amount);
