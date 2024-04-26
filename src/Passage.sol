@@ -95,14 +95,14 @@ contract HostPassage {
     ///      The rollup STF will apply the user's exit transactions on the rollup up to the point that sum(tokenOut) is lte the ExitFilled amount.
     /// TODO: add option to fulfill ExitOrders with native ETH? or is it sufficient to only allow users to exit via WETH?
     function fulfillExits(ExitOrder[] calldata orders) external payable {
-        uint256 etherTransferred = msg.value;
+        uint256 ethRemaining = msg.value;
         for (uint256 i = 0; i < orders.length; i++) {
             // transfer value
             if (orders[i].token == address(0)) {
                 // transfer native Ether to the recipient
                 payable(orders[i].recipient).transfer(orders[i].amount);
                 // NOTE: this will underflow if sender attempts to transfer more Ether than they sent to the contract
-                etherTransferred -= orders[i].amount;
+                ethRemaining -= orders[i].amount;
             } else {
                 // transfer tokens to the recipient
                 IERC20(orders[i].token).transferFrom(msg.sender, orders[i].recipient, orders[i].amount);
