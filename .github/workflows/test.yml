@@ -11,5 +11,3 @@ jobs:
     uses: init4tech/actions/.github/workflows/solidity-base.yml@main
     with:
       gas-diff-tolerance: 2 # setting the gas diff tolerance to 2%
-  solidity-coverage:
-    uses: init4tech/actions/.github/workflows/solidity-coverage.yml@main
