@@ -1,4 +1,5 @@
-name: CI
+name: Solidity Base CI
+
 on:
   pull_request:
   push:
@@ -6,8 +7,41 @@ on:
     - main
   workflow_dispatch:
 
+env:
+  FOUNDRY_PROFILE: ci
+
 jobs:
-  solidity-base:
-    uses: init4tech/actions/.github/workflows/solidity-base.yml@main
-    with:
-      gas-diff-tolerance: 2 # setting the gas diff tolerance to 2%
+  check:
+    strategy:
+      fail-fast: true
+
+    name: Solidity Base CI
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          forge build --sizes
+        id: build
+
+      - name: Run Forge fmt  
+        run: |
+          forge fmt --check
+        id: fmt
+
+      - name: Run Forge tests
+        run: |
+          forge test -vvv
+        id: test
+      # do not run if disable-gas-snapshot is true
+      - name: Compare gas reports
+        run: |
+          FOUNDRY_PROFILE=snapshot forge snapshot --check --silent --tolerance ${{ inputs.gas-diff-tolerance }}
+        id: gas-snapshot
