@@ -33,15 +33,11 @@ contract HostPassage {
     ///                    Corresponds to recipient_H in the RollupPassage contract.
     /// @param amount - The amount of the token to be transferred to the recipient.
     ///                 Corresponds to one or more amountOutMinimum_H in the RollupPassage contract.
-    /// @param deadline - The deadline by which the exit order must be fulfilled.
-    ///                   Corresponds to deadline in the RollupPassage contract.
-    ///                   If the ExitOrder is a combination of multiple orders, the deadline SHOULD be the latest of all orders.
     struct ExitOrder {
         uint256 rollupChainId;
         address token;
         address recipient;
         uint256 amount;
-        uint256 deadline;
     }
 
     constructor(uint256 _defaultRollupChainId) {
@@ -82,6 +78,11 @@ contract HostPassage {
     /// @notice Fulfills exit orders by transferring tokenOut to the recipient
     /// @param orders The exit orders to fulfill
     /// @custom:emits ExitFilled for each exit order fulfilled.
+    /// @dev Builder SHOULD call `filfillExits` atomically with `submitBlock`.
+    ///      Builder SHOULD set a block expiration time that is AT MOST the minimum of all exit order deadlines;
+    ///      this way, `fulfillExits` + `submitBlock` will revert atomically on mainnet if any exit orders have expired.
+    ///      Otherwise, `filfillExits` may mine on mainnet, while `submitExit` reverts on the rollup,
+    ///      and the Builder can't collect the corresponding value on the rollup.
     /// @dev Called by the Builder atomically with a transaction calling `submitBlock`.
     ///      The user-submitted transactions initiating the ExitOrders on the rollup
     ///      must be included by the Builder in the rollup block submitted via `submitBlock`.
@@ -96,8 +97,6 @@ contract HostPassage {
     function fulfillExits(ExitOrder[] calldata orders) external payable {
         uint256 etherTransferred = msg.value;
         for (uint256 i = 0; i < orders.length; i++) {
-            // check that the deadline hasn't passed
-            if (block.timestamp > orders[i].deadline) revert OrderExpired();
             // transfer value
             if (orders[i].token == address(0)) {
                 // transfer native Ether to the recipient
