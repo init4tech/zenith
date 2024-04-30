@@ -6,6 +6,12 @@ on:
     - main
   workflow_dispatch:
 
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  repository-projects: read
+    
 jobs:
   solidity-base:
     uses: init4tech/actions/.github/workflows/solidity-base.yml@main
