@@ -2,11 +2,11 @@
 pragma solidity ^0.8.24;
 
 // import openzeppelin Role contracts
-import {HostPassage} from "./Passage.sol";
+import {Passage} from "./Passage.sol";
 import {AccessControlDefaultAdminRules} from
     "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 
-contract Zenith is HostPassage, AccessControlDefaultAdminRules {
+contract Zenith is Passage, AccessControlDefaultAdminRules {
     /// @notice Block header information for the rollup block, signed by the sequencer.
     /// @param rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
     /// @param sequence - the sequence number of the rollup block. Must be monotonically increasing. Enforced by the contract.
@@ -63,7 +63,7 @@ contract Zenith is HostPassage, AccessControlDefaultAdminRules {
     ///      - Admin role can be transferred via two-step process with a 1 day timelock.
     /// @param admin - the address that will be the initial admin.
     constructor(uint256 defaultRollupChainId, address admin)
-        HostPassage(defaultRollupChainId)
+        Passage(defaultRollupChainId)
         AccessControlDefaultAdminRules(1 days, admin)
     {}
 
