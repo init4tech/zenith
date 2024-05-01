@@ -7,6 +7,9 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
 contract HostPassage {
+    /// @notice The chainId of the default rollup chain.
+    uint256 immutable defaultRollupChainId;
+
     /// @notice Thrown when attempting to fulfill an exit order with a deadline that has passed.
     error OrderExpired();
 
@@ -14,13 +17,13 @@ contract HostPassage {
     /// @param token - The address of the token entering the rollup.
     /// @param rollupRecipient - The recipient of the token on the rollup.
     /// @param amount - The amount of the token entering the rollup.
-    event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
+    event Enter(uint256 rollupChainId, address indexed token, address indexed rollupRecipient, uint256 amount);
 
     /// @notice Emitted when an exit order is fulfilled by the Builder.
     /// @param token - The address of the token transferred to the recipient.
     /// @param hostRecipient - The recipient of the token on host.
     /// @param amount - The amount of the token transferred to the recipient.
-    event ExitFilled(address indexed token, address indexed hostRecipient, uint256 amount);
+    event ExitFilled(uint256 rollupChainId, address indexed token, address indexed hostRecipient, uint256 amount);
 
     /// @notice Details of an exit order to be fulfilled by the Builder.
     /// @param token - The address of the token to be transferred to the recipient.
@@ -30,37 +33,56 @@ contract HostPassage {
     ///                    Corresponds to recipient_H in the RollupPassage contract.
     /// @param amount - The amount of the token to be transferred to the recipient.
     ///                 Corresponds to one or more amountOutMinimum_H in the RollupPassage contract.
-    /// @param deadline - The deadline by which the exit order must be fulfilled.
-    ///                   Corresponds to deadline in the RollupPassage contract.
-    ///                   If the ExitOrder is a combination of multiple orders, the deadline SHOULD be the latest of all orders.
     struct ExitOrder {
+        uint256 rollupChainId;
         address token;
         address recipient;
         uint256 amount;
-        uint256 deadline;
+    }
+
+    constructor(uint256 _defaultRollupChainId) {
+        defaultRollupChainId = _defaultRollupChainId;
     }
 
     /// @notice Allows native Ether to enter the rollup by being sent directly to the contract.
     fallback() external payable {
-        enter(msg.sender);
+        enter(defaultRollupChainId, msg.sender);
     }
 
     /// @notice Allows native Ether to enter the rollup by being sent directly to the contract.
     receive() external payable {
-        enter(msg.sender);
+        enter(defaultRollupChainId, msg.sender);
     }
 
     /// @notice Allows native Ether to enter the rollup.
     /// @dev Permanently burns the entire msg.value by locking it in this contract.
+    /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
-    /// @custom:emits Enter indicatig the amount of Ether to mint on the rollup & its recipient.
-    function enter(address rollupRecipient) public payable {
-        emit Enter(address(0), rollupRecipient, msg.value);
+    /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
+    function enter(uint256 rollupChainId, address rollupRecipient) public payable {
+        emit Enter(rollupChainId, address(0), rollupRecipient, msg.value);
+    }
+
+    /// @notice Allows ERC20s to enter the rollup.
+    /// @dev Permanently burns the token amount by locking it in this contract.
+    /// @param rollupChainId - The rollup chain to enter.
+    /// @param rollupRecipient - The recipient of the Ether on the rollup.
+    /// @param token - The address of the ERC20 token on the Host.
+    /// @param amount - The amount of the ERC20 token to transfer to the rollup.
+    /// @custom:emits Enter indicating the amount of tokens to mint on the rollup & its recipient.
+    function enter(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public payable {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        emit Enter(rollupChainId, token, rollupRecipient, amount);
     }
 
     /// @notice Fulfills exit orders by transferring tokenOut to the recipient
     /// @param orders The exit orders to fulfill
     /// @custom:emits ExitFilled for each exit order fulfilled.
+    /// @dev Builder SHOULD call `filfillExits` atomically with `submitBlock`.
+    ///      Builder SHOULD set a block expiration time that is AT MOST the minimum of all exit order deadlines;
+    ///      this way, `fulfillExits` + `submitBlock` will revert atomically on mainnet if any exit orders have expired.
+    ///      Otherwise, `filfillExits` may mine on mainnet, while `submitExit` reverts on the rollup,
+    ///      and the Builder can't collect the corresponding value on the rollup.
     /// @dev Called by the Builder atomically with a transaction calling `submitBlock`.
     ///      The user-submitted transactions initiating the ExitOrders on the rollup
     ///      must be included by the Builder in the rollup block submitted via `submitBlock`.
@@ -72,15 +94,21 @@ contract HostPassage {
     ///      the Builder may transfer the cumulative tokenOut to the user in a single ExitFilled event.
     ///      The rollup STF will apply the user's exit transactions on the rollup up to the point that sum(tokenOut) is lte the ExitFilled amount.
     /// TODO: add option to fulfill ExitOrders with native ETH? or is it sufficient to only allow users to exit via WETH?
-    function fulfillExits(ExitOrder[] calldata orders) external {
+    function fulfillExits(ExitOrder[] calldata orders) external payable {
+        uint256 ethRemaining = msg.value;
         for (uint256 i = 0; i < orders.length; i++) {
-            ExitOrder memory order = orders[i];
-            // check that the deadline hasn't passed
-            if (block.timestamp > order.deadline) revert OrderExpired();
-            // transfer tokens to the recipient
-            IERC20(order.token).transferFrom(msg.sender, order.recipient, order.amount);
+            // transfer value
+            if (orders[i].token == address(0)) {
+                // transfer native Ether to the recipient
+                payable(orders[i].recipient).transfer(orders[i].amount);
+                // NOTE: this will underflow if sender attempts to transfer more Ether than they sent to the contract
+                ethRemaining -= orders[i].amount;
+            } else {
+                // transfer tokens to the recipient
+                IERC20(orders[i].token).transferFrom(msg.sender, orders[i].recipient, orders[i].amount);
+            }
             // emit
-            emit ExitFilled(order.token, order.recipient, order.amount);
+            emit ExitFilled(orders[i].rollupChainId, orders[i].token, orders[i].recipient, orders[i].amount);
         }
     }
 }
@@ -154,7 +182,7 @@ contract RollupPassage {
     /// @param amountOutMinimum_H - The minimum amount of tokenOut_H the user expects to receive on host.
     /// @custom:reverts Expired if the deadline has passed.
     /// @custom:emits Exit if the exit transaction succeeds.
-    function submitExit(address tokenOut_H, address recipient_H, uint256 deadline, uint256 amountOutMinimum_H)
+    function submitEthExit(address tokenOut_H, address recipient_H, uint256 deadline, uint256 amountOutMinimum_H)
         external
         payable
     {
@@ -183,7 +211,7 @@ contract RollupPassage {
     /// @dev Called by the Builder within the same block as `submitExit` transactions to claim the amounts of native Ether.
     /// @dev Builder MUST ensure that no other account calls `sweepETH` before them.
     /// @param recipient - The address to receive the native Ether.
-    function sweepETH(address payable recipient) public {
+    function sweepEth(address payable recipient) public {
         recipient.transfer(address(this).balance);
         emit Sweep(recipient);
     }

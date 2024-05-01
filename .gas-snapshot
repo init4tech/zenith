@@ -1,0 +1,7 @@
+HelpersTest:test_signature() (gas: 6587)
+ZenithTest:test_badSequence() (gas: 77336)
+ZenithTest:test_badSignature() (gas: 66901)
+ZenithTest:test_blockExpired() (gas: 55457)
+ZenithTest:test_notSequencer() (gas: 58632)
+ZenithTest:test_onePerBlock() (gas: 121189)
+ZenithTest:test_submitBlock() (gas: 88201)
