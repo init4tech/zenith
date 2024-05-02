@@ -16,7 +16,12 @@ contract ZenithTest is Test {
     uint256 sequencerKey = 123;
     uint256 notSequencerKey = 300;
 
-    event BlockSubmitted(address indexed sequencer, Zenith.BlockHeader indexed headerHash, Zenith.BlockHeader header, bytes32 blockDataHash);
+    event BlockSubmitted(
+        address indexed sequencer,
+        Zenith.BlockHeader indexed headerHash,
+        Zenith.BlockHeader header,
+        bytes32 blockDataHash
+    );
 
     function setUp() public {
         target = new Zenith(block.chainid + 1, address(this));

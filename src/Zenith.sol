@@ -52,7 +52,9 @@ contract Zenith is Passage, AccessControlDefaultAdminRules {
     /// @param sequencer - the address of the sequencer that signed the block.
     /// @param header - the block header information for the block.
     /// @param blockDataHash - keccak256(blockData). the Node will discard the block if the hash doens't match.
-    event BlockSubmitted(address indexed sequencer, BlockHeader indexed headerHash, BlockHeader header, bytes32 blockDataHash);
+    event BlockSubmitted(
+        address indexed sequencer, BlockHeader indexed headerHash, BlockHeader header, bytes32 blockDataHash
+    );
 
     /// @notice Emit the entire block data for easy visibility
     event BlockData(bytes blockData);
