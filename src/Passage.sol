@@ -78,10 +78,10 @@ contract Passage {
     /// @notice Fulfills exit orders by transferring tokenOut to the recipient
     /// @param orders The exit orders to fulfill
     /// @custom:emits ExitFilled for each exit order fulfilled.
-    /// @dev Builder SHOULD call `filfillExits` atomically with `submitBlock`.
+    /// @dev Builder SHOULD call `fulfillExits` atomically with `submitBlock`.
     ///      Builder SHOULD set a block expiration time that is AT MOST the minimum of all exit order deadlines;
     ///      this way, `fulfillExits` + `submitBlock` will revert atomically on mainnet if any exit orders have expired.
-    ///      Otherwise, `filfillExits` may mine on mainnet, while `submitExit` reverts on the rollup,
+    ///      Otherwise, `fulfillExits` may mine on mainnet, while `submitExit` reverts on the rollup,
     ///      and the Builder can't collect the corresponding value on the rollup.
     /// @dev Called by the Builder atomically with a transaction calling `submitBlock`.
     ///      The user-submitted transactions initiating the ExitOrders on the rollup
