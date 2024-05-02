@@ -18,8 +18,11 @@ contract ZenithTest is Test {
 
     event BlockSubmitted(
         address indexed sequencer,
-        Zenith.BlockHeader indexed headerHash,
-        Zenith.BlockHeader header,
+        uint256 indexed rollupChainId,
+        uint256 indexed sequence,
+        uint256 confirmBy,
+        uint256 gasLimit,
+        address rewardAddress,
         bytes32 blockDataHash
     );
 
@@ -73,7 +76,15 @@ contract ZenithTest is Test {
 
         // should emit BlockSubmitted event
         vm.expectEmit();
-        emit BlockSubmitted(vm.addr(sequencerKey), header, header, blockDataHash);
+        emit BlockSubmitted(
+            vm.addr(sequencerKey),
+            header.rollupChainId,
+            header.sequence,
+            header.confirmBy,
+            header.gasLimit,
+            header.rewardAddress,
+            blockDataHash
+        );
         target.submitBlock(header, blockDataHash, v, r, s, blockData);
 
         // should increment sequence number
@@ -110,7 +121,15 @@ contract ZenithTest is Test {
 
         // should emit BlockSubmitted event
         vm.expectEmit();
-        emit BlockSubmitted(vm.addr(sequencerKey), header, header, blockDataHash);
+        emit BlockSubmitted(
+            vm.addr(sequencerKey),
+            header.rollupChainId,
+            header.sequence,
+            header.confirmBy,
+            header.gasLimit,
+            header.rewardAddress,
+            blockDataHash
+        );
         target.submitBlock(header, blockDataHash, v, r, s, blockData);
 
         // incerement the header sequence
