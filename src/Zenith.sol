@@ -50,9 +50,21 @@ contract Zenith is Passage, AccessControlDefaultAdminRules {
 
     /// @notice Emitted when a new rollup block is successfully submitted.
     /// @param sequencer - the address of the sequencer that signed the block.
-    /// @param header - the block header information for the block.
+    /// @param rollupChainId - the chainId of the rollup chain.
+    /// @param sequence - the sequence number of the rollup block.
+    /// @param confirmBy - the timestamp by which the block must be submitted.
+    /// @param gasLimit - the gas limit for the rollup block.
+    /// @param rewardAddress - the address to receive the rollup block reward.
     /// @param blockDataHash - keccak256(blockData). the Node will discard the block if the hash doens't match.
-    event BlockSubmitted(address indexed sequencer, BlockHeader indexed header, bytes32 blockDataHash);
+    event BlockSubmitted(
+        address indexed sequencer,
+        uint256 indexed rollupChainId,
+        uint256 indexed sequence,
+        uint256 confirmBy,
+        uint256 gasLimit,
+        address rewardAddress,
+        bytes32 blockDataHash
+    );
 
     /// @notice Emit the entire block data for easy visibility
     event BlockData(bytes blockData);
@@ -115,7 +127,15 @@ contract Zenith is Passage, AccessControlDefaultAdminRules {
         lastSubmittedAtBlock[header.rollupChainId] = block.number;
 
         // emit event
-        emit BlockSubmitted(sequencer, header, blockDataHash);
+        emit BlockSubmitted(
+            sequencer,
+            header.rollupChainId,
+            header.sequence,
+            header.confirmBy,
+            header.gasLimit,
+            header.rewardAddress,
+            blockDataHash
+        );
     }
 
     /// @notice Construct hash of block details that the sequencer signs.
