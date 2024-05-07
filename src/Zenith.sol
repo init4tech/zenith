@@ -120,7 +120,7 @@ contract Zenith is Passage, AccessControlDefaultAdminRules {
         address sequencer = ecrecover(blockCommit, v, r, s);
 
         // assert that signature is valid && sequencer is permissioned
-        if (!hasRole(SEQUENCER_ROLE, sequencer)) revert BadSignature(sequencer);
+        if (sequencer == address(0) || !hasRole(SEQUENCER_ROLE, sequencer)) revert BadSignature(sequencer);
 
         // assert this is the first rollup block submitted for this host block
         if (lastSubmittedAtBlock[header.rollupChainId] == block.number) revert OneRollupBlockPerHostBlock();
