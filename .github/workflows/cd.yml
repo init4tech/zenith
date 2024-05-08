@@ -45,6 +45,7 @@ jobs:
     with:
       network: ${{ github.event.inputs.network }}
       environment: ${{ github.event.inputs.environment }}
+      forge-deployment-script: "DeployZenith"
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       holesky-kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
