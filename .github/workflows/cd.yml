@@ -29,13 +29,11 @@ on:
         options:
           - dev
 
-permissions:
-  contents: write
-  id-token: write
-
 jobs:
   auto-release:
     uses: init4tech/actions/.github/workflows/auto-release.yml@main
+    permissions:
+      contents: write    
     with:
       generate-tag: true
       custom-tag: ${{ github.event.inputs.custom-tag }}
