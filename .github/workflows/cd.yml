@@ -32,6 +32,7 @@ on:
 permissions:
   packages: write
   contents: write
+  id-token: write
 
 jobs:
   auto-release:
