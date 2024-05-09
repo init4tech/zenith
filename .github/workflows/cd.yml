@@ -29,24 +29,24 @@ on:
         options:
           - dev
 
-permissions:
-  packages: write
-  contents: write
-  id-token: write
-
 jobs:
   auto-release:
     uses: init4tech/actions/.github/workflows/auto-release.yml@main
+    permissions:
+      contents: write    
     with:
       generate-tag: true
       custom-tag: ${{ github.event.inputs.custom-tag }}
   deploy-contract:
     uses: init4tech/actions/.github/workflows/solidity-deployment.yml@main
     needs: auto-release
+    permissions:
+      contents: read
+      id-token: write
     with:
-      network: ${{ github.event.inputs.network }}
-      environment: ${{ github.event.inputs.environment }}
-      forge-deployment-script: "DeployZenith"
+      network: holesky
+      environment: dev
+      forge-deployment-script: DeployZenith
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       holesky-kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
