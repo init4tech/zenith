@@ -149,15 +149,24 @@ contract RollupPassage is BasePassage {
     /// @notice Thrown when an exit transaction is submitted with a deadline that has passed.
     error OrderExpired();
 
-    /// @notice Emitted when an exit order is submitted & successfully processed, indicating it was also fulfilled on host.
-    /// @dev See `submitExit` for parameter docs.
-    event Exit(
-        address indexed tokenIn_RU,
-        address indexed tokenOut_H,
-        address indexed recipient_H,
+    /// @notice Emitted when a swap is submitted & successfully processed, indicating it was fulfilled.
+    /// @dev if `toHost` is TRUE, Rollup Node must look for `SwapFilled` on the Host chain (emitted by `Passage`).
+    ///      if `toHost` is FALSE, Rollup Node must look for `SwapFilled` on the rollup (emitted by this same `RollupPassage`).
+    /// @param targetChainId - The chain id the user wants to receive funds on.
+    /// @param tokenIn - The address of the token the user supplies as the input on the rollup for the trade.
+    /// @param tokenOut - The address of the token the user expects to receive on host.
+    /// @param recipient - The address of the recipient of tokenOut_H on host.
+    /// @param deadline - The deadline by which the exit order must be fulfilled.
+    /// @param amountIn - The amount of tokenIn the user supplies as the input on the rollup for the trade.
+    /// @param amountOutMinimum - The minimum amount of tokenOut_H the user expects to receive on host.
+    event Swap(
+        uint256 indexed targetChainId,
+        address indexed tokenIn,
+        address tokenOut,
+        address indexed recipient,
         uint256 deadline,
-        uint256 amountIn_RU,
-        uint256 amountOutMinimum_H
+        uint256 amountIn,
+        uint256 amountOutMinimum
     );
 
     /// @notice Emitted when tokens or native Ether is swept from the contract.
@@ -165,63 +174,46 @@ contract RollupPassage is BasePassage {
     ///      Intentionally does not bother to emit which token(s) were swept, nor their amounts.
     event Sweep(address indexed recipient);
 
-    /// @notice Expresses an intent to exit the rollup with ERC20s.
-    /// @dev Exits are modeled as a swap between two tokens.
-    ///      tokenIn_RU is provided on the rollup; in exchange,
-    ///      tokenOut_H is expected to be received on host.
-    ///      Exits may "swap" native rollup Ether for host WETH -
-    ///      two assets that represent the same underlying token and should have roughly the same value -
-    ///      or they may be a more "true" swap of rollup USDC for host WETH.
-    ///      Fees paid to the Builders for fulfilling the exit orders
-    ///      can be included within the "exchange rate" between tokenIn and tokenOut.
-    /// @dev The Builder claims the tokenIn_RU from the contract by submitting a transaction to `sweep` the tokens within the same block.
-    /// @dev The Rollup STF MUST NOT apply `submitExit` transactions to the rollup state
-    ///      UNLESS a sufficient ExitFilled event is emitted on host within the same block.
-    /// @param tokenIn_RU - The address of the token the user supplies as the input on the rollup for the trade.
-    /// @param tokenOut_H - The address of the token the user expects to receive on host.
-    /// @param recipient_H - The address of the recipient of tokenOut_H on host.
-    /// @param deadline - The deadline by which the exit order must be fulfilled.
-    /// @param amountIn_RU - The amount of tokenIn_RU the user supplies as the input on the rollup for the trade.
-    /// @param amountOutMinimum_H - The minimum amount of tokenOut_H the user expects to receive on host.
-    /// @custom:reverts Expired if the deadline has passed.
-    /// @custom:emits Exit if the exit transaction succeeds.
-    function submitExit(
-        address tokenIn_RU,
-        address tokenOut_H,
-        address recipient_H,
+    /// @notice Expresses an intent to exit value from the rollup.
+
+    /// @notice TODO
+    /// @dev The Rollup STF MUST NOT apply `swap` transactions to the rollup state
+    ///      UNLESS a sufficient `SwapFulfilled` event is emitted within the same block on the `targetChain`.
+    /// @dev Moving back to the Host chain is modeled as a swap between two tokens.
+    ///      `tokenIn` is provided on the rollup; in exchange,
+    ///      `tokenOut` is expected to be received on the target chain.
+    ///      Users may swap any token pair (homogeneous or heterogeneous)
+    ///      between chains (RU to host) or within a chain (RU to same RU).
+    /// @dev Any fees paid to the Builders for fulfilling swaps
+    ///      can be included within the "exchange rate" between `tokenIn` and `tokenOut`.
+    /// @dev The Builder claims `tokenIn` from this contract by calling `sweep` within the same block.
+    /// @dev if `tokenIn` or `tokenOut` is set to address(0), this indicates native Ether.
+    /// @custom:param See event `Swap` for full param docs.
+    /// @custom:reverts `OrderExpired` if the deadline has passed.
+    /// @custom:emits `Swap` if the swap transaction mines, which means that the swap was filled.
+    function swap(
+        uint256 targetChainId,
+        address tokenIn,
+        address tokenOut,
+        address recipient,
         uint256 deadline,
-        uint256 amountIn_RU,
-        uint256 amountOutMinimum_H
-    ) external {
+        uint256 amountIn,
+        uint256 amountOutMinimum
+    ) external payable {
         // check that the deadline hasn't passed
         if (block.timestamp >= deadline) revert OrderExpired();
 
-        // transfer the tokens from the user to the contract
-        IERC20(tokenIn_RU).transferFrom(msg.sender, address(this), amountIn_RU);
+        // transfer value to this contract
+        if (tokenIn == address(0)) {
+            // if native ether, ensure value is already attached to the transaction
+            require(amountIn == msg.value);
+        } else {
+            // if ERC20, transfer the token into the contract
+            IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
+        }
 
-        // emit the exit event
-        emit Exit(tokenIn_RU, tokenOut_H, recipient_H, deadline, amountIn_RU, amountOutMinimum_H);
-    }
-
-    /// @notice Expresses an intent to exit the rollup with native Ether.
-    /// @dev See `submitExit` above for dev details on how exits work.
-    /// @dev tokenIn_RU is set to address(0), native rollup Ether.
-    ///      amountIn_RU is set to msg.value.
-    /// @param tokenOut_H - The address of the token the user expects to receive on host.
-    /// @param recipient_H - The address of the recipient of tokenOut_H on host.
-    /// @param deadline - The deadline by which the exit order must be fulfilled.
-    /// @param amountOutMinimum_H - The minimum amount of tokenOut_H the user expects to receive on host.
-    /// @custom:reverts Expired if the deadline has passed.
-    /// @custom:emits Exit if the exit transaction succeeds.
-    function submitEthExit(address tokenOut_H, address recipient_H, uint256 deadline, uint256 amountOutMinimum_H)
-        external
-        payable
-    {
-        // check that the deadline hasn't passed
-        if (block.timestamp >= deadline) revert OrderExpired();
-
-        // emit the exit event
-        emit Exit(address(0), tokenOut_H, recipient_H, deadline, msg.value, amountOutMinimum_H);
+        // emit
+        emit Swap(targetChainId, tokenIn, tokenOut, recipient, deadline, amountIn, amountOutMinimum);
     }
 
     /// @notice Transfer the entire balance of tokens to the recipient.
