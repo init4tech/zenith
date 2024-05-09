@@ -172,7 +172,7 @@ contract RollupPassage is BasePassage {
     /// @notice Emitted when tokens or native Ether is swept from the contract.
     /// @dev Intended to improve visibility for Builders to ensure Sweep isn't called unexpectedly.
     ///      Intentionally does not bother to emit which token(s) were swept, nor their amounts.
-    event Sweep(address indexed recipient);
+    event Sweep(address indexed recipient, address[] tokens);
 
     /// @notice Expresses an intent to exit value from the rollup.
 
@@ -216,26 +216,20 @@ contract RollupPassage is BasePassage {
         emit Swap(targetChainId, tokenIn, tokenOut, recipient, deadline, amountIn, amountOutMinimum);
     }
 
-    /// @notice Transfer the entire balance of tokens to the recipient.
-    /// @dev Called by the Builder within the same block as `submitExit` transactions to claim the amounts of `tokenIn`.
+    /// @notice Transfer the entire balance of specified tokens/Ether to the recipient.
+    /// @dev Called by the Builder within the same block as `exit` or `swap` transactions to claim the amounts of `tokenIn`.
     /// @dev Builder MUST ensure that no other account calls `sweep` before them.
-    /// @param recipient - The address to receive the tokens.
-    /// @param tokens - The addresses of the tokens to transfer.
-    /// TODO: should there be more granular control for the builder to specify a different recipient for each token?
+    /// @param recipient - The address to receive the value.
+    /// @param tokens - The addresses of the tokens to transfer. address(0) specifies native Ether.
     function sweep(address recipient, address[] calldata tokens) public {
         for (uint256 i = 0; i < tokens.length; i++) {
-            IERC20 token = IERC20(tokens[i]);
-            token.transfer(recipient, token.balanceOf(address(this)));
+            if (tokens[i] == address(0)) {
+                payable(recipient).transfer(address(this).balance);
+            } else {
+                IERC20 token = IERC20(tokens[i]);
+                token.transfer(recipient, token.balanceOf(address(this)));
+            }
         }
-        emit Sweep(recipient);
-    }
-
-    /// @notice Transfer the entire balance of native Ether to the recipient.
-    /// @dev Called by the Builder within the same block as `submitExit` transactions to claim the amounts of native Ether.
-    /// @dev Builder MUST ensure that no other account calls `sweepETH` before them.
-    /// @param recipient - The address to receive the native Ether.
-    function sweepEth(address payable recipient) public {
-        recipient.transfer(address(this).balance);
-        emit Sweep(recipient);
+        emit Sweep(recipient, tokens);
     }
 }
