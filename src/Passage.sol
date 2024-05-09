@@ -6,24 +6,76 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {AccessControlDefaultAdminRules} from
     "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 
+abstract contract BasePassage {
+    /// @notice Emitted when a swap order is fulfilled by the Builder.
+    /// @param originChainId - The chainId of the rollup on which the swap order was initiated.
+    /// @param tokenOut - The address of the token transferred to the recipient.
+    /// @param recipient - The recipient of the token.
+    /// @param amount - The amount of the token transferred to the recipient.
+    event SwapFulfilled(
+        uint256 indexed originChainId, address indexed tokenOut, address indexed recipient, uint256 amount
+    );
+
+    /// @notice Details of an order to be fulfilled by the Builder.
+    /// @param tokenOut - The address of the token to be transferred to the recipient.
+    ///                   If token is address(0), `amount` is native Ether.
+    /// @param recipient - The recipient of the token.
+    /// @param amount - The amount of the token to be transferred to the recipient.
+    struct SwapFulfillment {
+        uint256 originChainId;
+        address tokenOut;
+        address recipient;
+        uint256 amount;
+    }
+
+    /// @notice Fulfills exit orders by transferring tokenOut to the recipient
+    /// @param orders The exit orders to fulfill
+    /// @custom:emits ExitFilled for each exit order fulfilled.
+    /// @dev Builder SHOULD call `fulfillExits` atomically with `submitBlock`.
+    ///      Builder SHOULD set a block expiration time that is AT MOST the minimum of all exit order deadlines;
+    ///      this way, `fulfillExits` + `submitBlock` will revert atomically on mainnet if any exit orders have expired.
+    ///      Otherwise, `fulfillExits` may mine on mainnet, while `submitExit` reverts on the rollup,
+    ///      and the Builder can't collect the corresponding value on the rollup.
+    /// @dev Called by the Builder atomically with a transaction calling `submitBlock`.
+    ///      The user-submitted transactions initiating the SwapFulfillments on the rollup
+    ///      must be included by the Builder in the rollup block submitted via `submitBlock`.
+    /// @dev The user transfers tokenIn on the rollup, and receives tokenOut on host.
+    /// @dev The Builder receives tokenIn on the rollup, and transfers tokenOut to the user on host.
+    /// @dev The rollup STF MUST NOT apply `submitExit` transactions to the rollup state
+    ///      UNLESS a corresponding ExitFilled event is emitted on host in the same block.
+    /// @dev If the user submits multiple exit transactions for the same token in the same rollup block,
+    ///      the Builder may transfer the cumulative tokenOut to the user in a single ExitFilled event.
+    ///      The rollup STF will apply the user's exit transactions on the rollup up to the point that sum(tokenOut) is lte the ExitFilled amount.
+    function fulfillSwap(SwapFulfillment[] calldata orders) external payable {
+        uint256 ethRemaining = msg.value;
+        for (uint256 i = 0; i < orders.length; i++) {
+            // transfer value
+            if (orders[i].tokenOut == address(0)) {
+                // transfer native Ether to the recipient
+                payable(orders[i].recipient).transfer(orders[i].amount);
+                // NOTE: this will underflow if sender attempts to transfer more Ether than they sent to the contract
+                ethRemaining -= orders[i].amount;
+            } else {
+                // transfer tokens to the recipient
+                IERC20(orders[i].tokenOut).transferFrom(msg.sender, orders[i].recipient, orders[i].amount);
+            }
+            // emit
+            emit SwapFulfilled(orders[i].originChainId, orders[i].tokenOut, orders[i].recipient, orders[i].amount);
+        }
+    }
+}
+
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
-contract Passage is AccessControlDefaultAdminRules {
+contract Passage is BasePassage, AccessControlDefaultAdminRules {
     /// @notice The chainId of the default rollup chain.
     uint256 immutable defaultRollupChainId;
-
 
     /// @notice Emitted when tokens enter the rollup.
     /// @param token - The address of the token entering the rollup.
     /// @param rollupRecipient - The recipient of the token on the rollup.
     /// @param amount - The amount of the token entering the rollup.
     event Enter(uint256 rollupChainId, address indexed token, address indexed rollupRecipient, uint256 amount);
-
-    /// @notice Emitted when an exit order is fulfilled by the Builder.
-    /// @param token - The address of the token transferred to the recipient.
-    /// @param hostRecipient - The recipient of the token on host.
-    /// @param amount - The amount of the token transferred to the recipient.
-    event ExitFilled(uint256 rollupChainId, address indexed token, address indexed hostRecipient, uint256 amount);
 
     /// @notice Emitted when the admin withdraws tokens from the contract.
     event Withdraw(Withdrawal withdrawal);
@@ -33,21 +85,6 @@ contract Passage is AccessControlDefaultAdminRules {
         uint256 ethAmount;
         address[] tokens;
         uint256[] tokenAmounts;
-    }
-
-    /// @notice Details of an exit order to be fulfilled by the Builder.
-    /// @param token - The address of the token to be transferred to the recipient.
-    ///                If token is the zero address, the amount is native Ether.
-    ///                Corresponds to tokenOut_H in the RollupPassage contract.
-    /// @param recipient - The recipient of the token on host.
-    ///                    Corresponds to recipient_H in the RollupPassage contract.
-    /// @param amount - The amount of the token to be transferred to the recipient.
-    ///                 Corresponds to one or more amountOutMinimum_H in the RollupPassage contract.
-    struct ExitOrder {
-        uint256 rollupChainId;
-        address token;
-        address recipient;
-        uint256 amount;
     }
 
     /// @notice Initializes the Admin role.
@@ -90,43 +127,6 @@ contract Passage is AccessControlDefaultAdminRules {
         emit Enter(rollupChainId, token, rollupRecipient, amount);
     }
 
-    /// @notice Fulfills exit orders by transferring tokenOut to the recipient
-    /// @param orders The exit orders to fulfill
-    /// @custom:emits ExitFilled for each exit order fulfilled.
-    /// @dev Builder SHOULD call `fulfillExits` atomically with `submitBlock`.
-    ///      Builder SHOULD set a block expiration time that is AT MOST the minimum of all exit order deadlines;
-    ///      this way, `fulfillExits` + `submitBlock` will revert atomically on mainnet if any exit orders have expired.
-    ///      Otherwise, `fulfillExits` may mine on mainnet, while `submitExit` reverts on the rollup,
-    ///      and the Builder can't collect the corresponding value on the rollup.
-    /// @dev Called by the Builder atomically with a transaction calling `submitBlock`.
-    ///      The user-submitted transactions initiating the ExitOrders on the rollup
-    ///      must be included by the Builder in the rollup block submitted via `submitBlock`.
-    /// @dev The user transfers tokenIn on the rollup, and receives tokenOut on host.
-    /// @dev The Builder receives tokenIn on the rollup, and transfers tokenOut to the user on host.
-    /// @dev The rollup STF MUST NOT apply `submitExit` transactions to the rollup state
-    ///      UNLESS a corresponding ExitFilled event is emitted on host in the same block.
-    /// @dev If the user submits multiple exit transactions for the same token in the same rollup block,
-    ///      the Builder may transfer the cumulative tokenOut to the user in a single ExitFilled event.
-    ///      The rollup STF will apply the user's exit transactions on the rollup up to the point that sum(tokenOut) is lte the ExitFilled amount.
-    /// TODO: add option to fulfill ExitOrders with native ETH? or is it sufficient to only allow users to exit via WETH?
-    function fulfillExits(ExitOrder[] calldata orders) external payable {
-        uint256 ethRemaining = msg.value;
-        for (uint256 i = 0; i < orders.length; i++) {
-            // transfer value
-            if (orders[i].token == address(0)) {
-                // transfer native Ether to the recipient
-                payable(orders[i].recipient).transfer(orders[i].amount);
-                // NOTE: this will underflow if sender attempts to transfer more Ether than they sent to the contract
-                ethRemaining -= orders[i].amount;
-            } else {
-                // transfer tokens to the recipient
-                IERC20(orders[i].token).transferFrom(msg.sender, orders[i].recipient, orders[i].amount);
-            }
-            // emit
-            emit ExitFilled(orders[i].rollupChainId, orders[i].token, orders[i].recipient, orders[i].amount);
-        }
-    }
-
     /// @notice Allows the admin to withdraw tokens from the contract.
     /// @dev Only the admin can call this function.
     function withdraw(Withdrawal[] calldata withdrawals) external onlyRole(DEFAULT_ADMIN_ROLE) {
@@ -145,7 +145,7 @@ contract Passage is AccessControlDefaultAdminRules {
 }
 
 /// @notice A contract deployed to the Rollup that allows users to atomically exchange tokens on the Rollup for tokens on the Host.
-contract RollupPassage {
+contract RollupPassage is BasePassage {
     /// @notice Thrown when an exit transaction is submitted with a deadline that has passed.
     error OrderExpired();
 
