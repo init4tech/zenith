@@ -48,8 +48,8 @@ jobs:
     with:
       network: holesky
       environment: dev
-      forge-deployment-script: DeployZenith
-      deployed-contract: Zenith.s.sol
+      forge-deployment-contract: DeployZenith
+      forge-deployment-script-file: Zenith.s.sol
       forge-deployment-signature: "run()"
       chain-id: 17000
     secrets:
