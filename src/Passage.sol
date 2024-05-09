@@ -12,8 +12,6 @@ contract Passage is AccessControlDefaultAdminRules {
     /// @notice The chainId of the default rollup chain.
     uint256 immutable defaultRollupChainId;
 
-    /// @notice Thrown when attempting to fulfill an exit order with a deadline that has passed.
-    error OrderExpired();
 
     /// @notice Emitted when tokens enter the rollup.
     /// @param token - The address of the token entering the rollup.
