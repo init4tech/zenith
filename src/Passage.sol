@@ -3,10 +3,12 @@ pragma solidity ^0.8.24;
 
 // import IERC20 from OpenZeppelin
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {AccessControlDefaultAdminRules} from
+    "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
-contract Passage {
+contract Passage is AccessControlDefaultAdminRules {
     /// @notice The chainId of the default rollup chain.
     uint256 immutable defaultRollupChainId;
 
@@ -25,6 +27,16 @@ contract Passage {
     /// @param amount - The amount of the token transferred to the recipient.
     event ExitFilled(uint256 rollupChainId, address indexed token, address indexed hostRecipient, uint256 amount);
 
+    /// @notice Emitted when the admin withdraws tokens from the contract.
+    event Withdraw(Withdrawal withdrawal);
+
+    struct Withdrawal {
+        address recipient;
+        uint256 ethAmount;
+        address[] tokens;
+        uint256[] tokenAmounts;
+    }
+
     /// @notice Details of an exit order to be fulfilled by the Builder.
     /// @param token - The address of the token to be transferred to the recipient.
     ///                If token is the zero address, the amount is native Ether.
@@ -40,7 +52,12 @@ contract Passage {
         uint256 amount;
     }
 
-    constructor(uint256 _defaultRollupChainId) {
+    /// @notice Initializes the Admin role.
+    /// @dev See `AccessControlDefaultAdminRules` for information on contract administration.
+    ///      - Admin role can grant and revoke Sequencer roles.
+    ///      - Admin role can be transferred via two-step process with a 1 day timelock.
+    /// @param admin - the address that will be the initial admin.
+    constructor(uint256 _defaultRollupChainId, address admin) AccessControlDefaultAdminRules(1 days, admin) {
         defaultRollupChainId = _defaultRollupChainId;
     }
 
@@ -109,6 +126,22 @@ contract Passage {
             }
             // emit
             emit ExitFilled(orders[i].rollupChainId, orders[i].token, orders[i].recipient, orders[i].amount);
+        }
+    }
+
+    /// @notice Allows the admin to withdraw tokens from the contract.
+    /// @dev Only the admin can call this function.
+    function withdraw(Withdrawal[] calldata withdrawals) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        for (uint256 i = 0; i < withdrawals.length; i++) {
+            // transfer ether
+            if (withdrawals[i].ethAmount > 0) {
+                payable(withdrawals[i].recipient).transfer(withdrawals[i].ethAmount);
+            }
+            // transfer ERC20 tokens
+            for (uint256 j = 0; j < withdrawals[i].tokens.length; j++) {
+                IERC20(withdrawals[i].tokens[j]).transfer(withdrawals[i].recipient, withdrawals[i].tokenAmounts[j]);
+            }
+            emit Withdraw(withdrawals[i]);
         }
     }
 }
