@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
   workflow_dispatch:
     inputs:
       generate-tag:
@@ -48,7 +50,7 @@ jobs:
       environment: dev
       forge-deployment-script: DeployZenith
       deployed-contract: Zenith.s.sol
-      forge-deployment-signature: run()
+      forge-deployment-signature: "run()"
       chain-id: 17000
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
