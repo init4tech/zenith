@@ -47,6 +47,8 @@ jobs:
       network: holesky
       environment: dev
       forge-deployment-script: DeployZenith
+      deployed-contract: Zenith.s.sol
+      chain-id: ${{ vars.CHAIN_ID }}
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       holesky-kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
