@@ -9,7 +9,7 @@ import {AccessControlDefaultAdminRules} from
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
 contract Passage is AccessControlDefaultAdminRules {
-    /// @notice The chainId of the default rollup chain.
+    /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 immutable defaultRollupChainId;
 
     /// @notice Thrown when attempting to fulfill an exit order with a deadline that has passed.
@@ -30,6 +30,11 @@ contract Passage is AccessControlDefaultAdminRules {
     /// @notice Emitted when the admin withdraws tokens from the contract.
     event Withdraw(Withdrawal withdrawal);
 
+    /// @notice A bundled withdrawal of Ether and ERC20 tokens.
+    /// @param recipient - The address to receive the Ether and ERC20 tokens.
+    /// @param ethAmount - The amount of Ether to transfer to the recipient. Zero if no Ether to transfer.
+    /// @param tokens - The addresses of the ERC20 tokens to transfer to the recipient.
+    /// @param tokenAmounts - The amounts of the ERC20 tokens to transfer to the recipient.
     struct Withdrawal {
         address recipient;
         uint256 ethAmount;
@@ -56,6 +61,8 @@ contract Passage is AccessControlDefaultAdminRules {
     /// @dev See `AccessControlDefaultAdminRules` for information on contract administration.
     ///      - Admin role can grant and revoke Sequencer roles.
     ///      - Admin role can be transferred via two-step process with a 1 day timelock.
+    /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
+    ///                                when entering the rollup via fallback() or receive() fns.
     /// @param admin - the address that will be the initial admin.
     constructor(uint256 _defaultRollupChainId, address admin) AccessControlDefaultAdminRules(1 days, admin) {
         defaultRollupChainId = _defaultRollupChainId;
@@ -131,6 +138,7 @@ contract Passage is AccessControlDefaultAdminRules {
 
     /// @notice Allows the admin to withdraw tokens from the contract.
     /// @dev Only the admin can call this function.
+    /// @param withdrawals - The withdrawals to process. See Withdrawal struct docs for details.
     function withdraw(Withdrawal[] calldata withdrawals) external onlyRole(DEFAULT_ADMIN_ROLE) {
         for (uint256 i = 0; i < withdrawals.length; i++) {
             // transfer ether
