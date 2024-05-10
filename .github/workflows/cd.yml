@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'src/**'
   workflow_dispatch:
     inputs:
       generate-tag:
@@ -41,12 +43,15 @@ jobs:
     uses: init4tech/actions/.github/workflows/solidity-deployment.yml@main
     needs: auto-release
     permissions:
-      contents: read
+      contents: write
       id-token: write
     with:
       network: holesky
       environment: dev
-      forge-deployment-script: DeployZenith
+      forge-deployment-contract: DeployZenith
+      forge-deployment-script-file: Zenith.s.sol
+      forge-deployment-signature: "run()"
+      chain-id: 17000
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       holesky-kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
