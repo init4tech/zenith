@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-// import openzeppelin Role contracts
 import {Passage} from "./Passage.sol";
 
 contract Zenith is Passage {
+    /// @notice The address that is allowed to set/remove sequencers.
+    address public immutable sequencerAdmin;
+
     /// @notice Block header information for the rollup block, signed by the sequencer.
     /// @param rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
     /// @param sequence - the sequence number of the rollup block. Must be monotonically increasing. Enforced by the contract.
@@ -19,9 +21,6 @@ contract Zenith is Passage {
         address rewardAddress;
     }
 
-    /// @notice Role that allows a key to sign commitments to rollup blocks.
-    bytes32 public constant SEQUENCER_ROLE = bytes32("SEQUENCER_ROLE");
-
     /// @notice The sequence number of the next block that can be submitted for a given rollup chainId.
     /// rollupChainId => nextSequence number
     mapping(uint256 => uint256) public nextSequence;
@@ -29,6 +28,10 @@ contract Zenith is Passage {
     /// @notice The host block number that a block was last submitted at for a given rollup chainId.
     /// rollupChainId => host blockNumber that block was last submitted at
     mapping(uint256 => uint256) public lastSubmittedAtBlock;
+
+    /// @notice Registry of permissioned sequencers.
+    /// address => TRUE if it's a permissioned sequencer
+    mapping(address => bool) public isSequencer;
 
     /// @notice Thrown when a block submission is attempted with a sequence number that is not the next block for the rollup chainId.
     /// @dev Blocks must be submitted in strict monotonic increasing order.
@@ -45,6 +48,9 @@ contract Zenith is Passage {
 
     /// @notice Thrown when attempting to submit more than one rollup block per host block
     error OneRollupBlockPerHostBlock();
+
+    /// @notice Thrown when attempting to modify sequencer roles if not sequencerAdmin.
+    error OnlySequencerAdmin();
 
     /// @notice Emitted when a new rollup block is successfully submitted.
     /// @param sequencer - the address of the sequencer that signed the block.
@@ -67,12 +73,36 @@ contract Zenith is Passage {
     /// @notice Emit the entire block data for easy visibility
     event BlockData(bytes blockData);
 
-    /// @notice Initializes the Admin role.
-    /// @dev See `AccessControlDefaultAdminRules` for information on contract administration.
-    ///      - Admin role can grant and revoke Sequencer roles.
-    ///      - Admin role can be transferred via two-step process with a 1 day timelock.
-    /// @param admin - the address that will be the initial admin.
-    constructor(uint256 defaultRollupChainId, address admin) Passage(defaultRollupChainId, admin) {}
+    /// @notice Emitted when a sequencer is added or removed.
+    event SequencerSet(address sequencer, bool permissioned);
+
+    constructor(uint256 _defaultRollupChainId, address _withdrawalAdmin, address _sequencerAdmin)
+        Passage(_defaultRollupChainId, _withdrawalAdmin)
+    {
+        sequencerAdmin = _sequencerAdmin;
+    }
+
+    /// @notice Add a sequencer to the permissioned sequencer list.
+    /// @param sequencer - the address of the sequencer to add.
+    /// @custom:emits SequencerSet if the sequencer is added.
+    /// @custom:reverts OnlySequencerAdmin if the caller is not the sequencerAdmin.
+    function addSequencer(address sequencer) external {
+        if (msg.sender != sequencerAdmin) revert OnlySequencerAdmin();
+        if (isSequencer[sequencer]) return;
+        isSequencer[sequencer] = true;
+        emit SequencerSet(sequencer, true);
+    }
+
+    /// @notice Remove a sequencer from the permissioned sequencer list.
+    /// @param sequencer - the address of the sequencer to remove.
+    /// @custom:emits SequencerSet if the sequencer is removed.
+    /// @custom:reverts OnlySequencerAdmin if the caller is not the sequencerAdmin.
+    function removeSequencer(address sequencer) external {
+        if (msg.sender != sequencerAdmin) revert OnlySequencerAdmin();
+        if (!isSequencer[sequencer]) return;
+        delete isSequencer[sequencer];
+        emit SequencerSet(sequencer, false);
+    }
 
     /// @notice Submit a rollup block with block data submitted via calldata.
     /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
@@ -115,7 +145,7 @@ contract Zenith is Passage {
         address sequencer = ecrecover(blockCommit, v, r, s);
 
         // assert that signature is valid && sequencer is permissioned
-        if (sequencer == address(0) || !hasRole(SEQUENCER_ROLE, sequencer)) revert BadSignature(sequencer);
+        if (sequencer == address(0) || !isSequencer[sequencer]) revert BadSignature(sequencer);
 
         // assert this is the first rollup block submitted for this host block
         if (lastSubmittedAtBlock[header.rollupChainId] == block.number) revert OneRollupBlockPerHostBlock();
