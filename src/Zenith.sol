@@ -19,9 +19,6 @@ contract Zenith is Passage {
         address rewardAddress;
     }
 
-    /// @notice Role that allows a key to sign commitments to rollup blocks.
-    bytes32 public constant SEQUENCER_ROLE = bytes32("SEQUENCER_ROLE");
-
     /// @notice The sequence number of the next block that can be submitted for a given rollup chainId.
     /// rollupChainId => nextSequence number
     mapping(uint256 => uint256) public nextSequence;
@@ -67,12 +64,9 @@ contract Zenith is Passage {
     /// @notice Emit the entire block data for easy visibility
     event BlockData(bytes blockData);
 
-    /// @notice Initializes the Admin role.
-    /// @dev See `AccessControlDefaultAdminRules` for information on contract administration.
-    ///      - Admin role can grant and revoke Sequencer roles.
-    ///      - Admin role can be transferred via two-step process with a 1 day timelock.
-    /// @param admin - the address that will be the initial admin.
-    constructor(uint256 defaultRollupChainId, address admin) Passage(defaultRollupChainId, admin) {}
+    constructor(uint256 _defaultRollupChainId, address withdrawalAdmin, address sequencerAdmin)
+        Passage(_defaultRollupChainId, withdrawalAdmin, sequencerAdmin)
+    {}
 
     /// @notice Submit a rollup block with block data submitted via calldata.
     /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.

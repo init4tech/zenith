@@ -4,13 +4,23 @@ pragma solidity ^0.8.24;
 import {Script} from "forge-std/Script.sol";
 import {Zenith} from "../src/Zenith.sol";
 
-contract DeployZenith is Script {
+contract ZenithScript is Script {
     // deploy:
-    // forge script DeployZenith --sig "run(address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $SEQUENCER_KEY
-    function run(address sequencer) public {
+    // forge script ZenithScript --sig "deploy(uint256,address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $SEQUENCER_ADMIN_ADDRESS
+    function deploy(uint256 defaultRollupChainId, address withdrawalAdmin, address sequencerAdmin)
+        public
+        returns (Zenith z)
+    {
         vm.startBroadcast();
-        Zenith z = new Zenith(block.chainid + 1, msg.sender);
-        z.grantRole(z.SEQUENCER_ROLE(), sequencer);
-        payable(address(z)).send(0.0123 ether);
+        z = new Zenith(defaultRollupChainId, withdrawalAdmin, sequencerAdmin);
+        // send some ETH to newly deployed Zenith to populate some rollup state
+        payable(address(z)).transfer(0.00123 ether);
+    }
+
+    // forge script ZenithScript --sig "setSequencerRole(address,address)" --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast $ZENITH_ADDRESS $SEQUENCER_ADDRESS
+    function setSequencerRole(address payable z, address sequencer) public {
+        vm.startBroadcast();
+        Zenith zenith = Zenith(z);
+        zenith.grantRole(zenith.SEQUENCER_ROLE(), sequencer);
     }
 }

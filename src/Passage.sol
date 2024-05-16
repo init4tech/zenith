@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-// import IERC20 from OpenZeppelin
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-import {AccessControlDefaultAdminRules} from
-    "openzeppelin-contracts/contracts/access/extensions/AccessControlDefaultAdminRules.sol";
+import {ZenithAdmin} from "./ZenithAdmin.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
-contract Passage is AccessControlDefaultAdminRules {
+contract Passage is ZenithAdmin {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 immutable defaultRollupChainId;
 
@@ -57,14 +55,11 @@ contract Passage is AccessControlDefaultAdminRules {
         uint256 amount;
     }
 
-    /// @notice Initializes the Admin role.
-    /// @dev See `AccessControlDefaultAdminRules` for information on contract administration.
-    ///      - Admin role can grant and revoke Sequencer roles.
-    ///      - Admin role can be transferred via two-step process with a 1 day timelock.
     /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
     ///                                when entering the rollup via fallback() or receive() fns.
-    /// @param admin - the address that will be the initial admin.
-    constructor(uint256 _defaultRollupChainId, address admin) AccessControlDefaultAdminRules(1 days, admin) {
+    constructor(uint256 _defaultRollupChainId, address withdrawalAdmin, address sequencerAdmin)
+        ZenithAdmin(withdrawalAdmin, sequencerAdmin)
+    {
         defaultRollupChainId = _defaultRollupChainId;
     }
 
@@ -139,7 +134,7 @@ contract Passage is AccessControlDefaultAdminRules {
     /// @notice Allows the admin to withdraw tokens from the contract.
     /// @dev Only the admin can call this function.
     /// @param withdrawals - The withdrawals to process. See Withdrawal struct docs for details.
-    function withdraw(Withdrawal[] calldata withdrawals) external onlyRole(DEFAULT_ADMIN_ROLE) {
+    function withdraw(Withdrawal[] calldata withdrawals) external onlyRole(WITHDRAWAL_ADMIN_ROLE) {
         for (uint256 i = 0; i < withdrawals.length; i++) {
             // transfer ether
             if (withdrawals[i].ethAmount > 0) {

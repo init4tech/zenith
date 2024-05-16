@@ -27,7 +27,7 @@ contract ZenithTest is Test {
     );
 
     function setUp() public {
-        target = new Zenith(block.chainid + 1, address(this));
+        target = new Zenith(block.chainid + 1, address(this), address(this));
         target.grantRole(target.SEQUENCER_ROLE(), vm.addr(sequencerKey));
 
         // set default block values
