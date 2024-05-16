@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-// import openzeppelin Role contracts
 import {Passage} from "./Passage.sol";
 
 contract Zenith is Passage {

@@ -17,10 +17,21 @@ contract ZenithScript is Script {
         payable(address(z)).transfer(0.00123 ether);
     }
 
+    // NOTE: script must be run using SequencerAdmin key
+    // set sequencer:
     // forge script ZenithScript --sig "setSequencerRole(address,address)" --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast $ZENITH_ADDRESS $SEQUENCER_ADDRESS
     function setSequencerRole(address payable z, address sequencer) public {
         vm.startBroadcast();
         Zenith zenith = Zenith(z);
         zenith.grantRole(zenith.SEQUENCER_ROLE(), sequencer);
+    }
+
+    // NOTE: script must be run using SequencerAdmin key
+    // revoke sequencer:
+    // forge script ZenithScript --sig "revokeSequencerRole(address,address)" --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast $ZENITH_ADDRESS $SEQUENCER_ADDRESS
+    function revokeSequencerRole(address payable z, address sequencer) public {
+        vm.startBroadcast();
+        Zenith zenith = Zenith(z);
+        zenith.revokeRole(zenith.SEQUENCER_ROLE(), sequencer);
     }
 }
