@@ -51,9 +51,10 @@ jobs:
       forge-deployment-contract: DeployZenith
       forge-deployment-script-file: Zenith.s.sol
       forge-deployment-signature: "run()"
+      etherscan-url: https://holesky.etherscan.io
       chain-id: 17000
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
-      holesky-kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
-      holesky-rpc-url: ${{ secrets.HOLESKY_RPC_URL }}
+      kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
+      rpc-url: ${{ secrets.HOLESKY_RPC_URL }}
       etherscan-api-key: ${{ secrets.ETHERSCAN_API_KEY }}
