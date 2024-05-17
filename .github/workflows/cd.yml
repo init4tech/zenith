@@ -48,9 +48,10 @@ jobs:
     with:
       network: holesky
       environment: dev
-      forge-deployment-contract: DeployZenith
+      forge-deployment-contract: ZenithScript
       forge-deployment-script-file: Zenith.s.sol
-      forge-deployment-signature: "run()"
+      forge-deployment-signature: "deploy"
+      forge-deployment-params: ${{ vars.FORGE_DEPLOYMENT_PARAMS }}
       etherscan-url: https://holesky.etherscan.io
       chain-id: 17000
     secrets:
