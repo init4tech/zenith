@@ -74,7 +74,7 @@ contract Zenith is Passage {
     event BlockData(bytes blockData);
 
     /// @notice Emitted when a sequencer is added or removed.
-    event SequencerSet(address sequencer, bool permissioned);
+    event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
     constructor(uint256 _defaultRollupChainId, address _withdrawalAdmin, address _sequencerAdmin)
         Passage(_defaultRollupChainId, _withdrawalAdmin)
