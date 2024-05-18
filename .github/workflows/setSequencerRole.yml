@@ -1,4 +1,4 @@
-name: CI
+name: Set Sequencer Role
 on:
   workflow_dispatch:
     inputs:
@@ -6,8 +6,8 @@ on:
         description: 'Address of the Zenith contract'
         required: true
         type: string
-      sequencer-admin-address:
-        description: 'Address of the sequencer admin account'
+      sequencer-address:
+        description: 'Address of the sequencer account'
         required: true
         type: string
     
@@ -18,7 +18,7 @@ jobs:
       github-environment: dev
       forge-script-contract: ZenithScript
       forge-script-signature: "setSequencerRole(address,address)"
-      forge-script-params: "${{ inputs.zenith-address }} ${{ inputs.sequencer-admin-address }}"
+      forge-script-params: "${{ inputs.zenith-address }} ${{ inputs.sequencer-address }}"
     secrets:
       aws-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       kms-key-id: ${{ secrets.HOLESKY_SEQUENCER_ADMIN_KEY_ID }}
