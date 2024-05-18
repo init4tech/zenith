@@ -10,15 +10,17 @@ on:
         description: 'Address of the sequencer account'
         required: true
         type: string
-    
+
 jobs:
-  solidity-base:
+  set-sequencer-role:
     uses: init4tech/actions/.github/workflows/forge-script.yml@main
     with:
       github-environment: dev
       forge-script-contract: ZenithScript
       forge-script-signature: "setSequencerRole(address,address)"
       forge-script-params: "${{ inputs.zenith-address }} ${{ inputs.sequencer-address }}"
+    permissions:
+      id-token: write
     secrets:
       aws-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       kms-key-id: ${{ secrets.HOLESKY_SEQUENCER_ADMIN_KEY_ID }}
