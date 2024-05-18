@@ -1,0 +1,31 @@
+name: CI
+on:
+  workflow_dispatch:
+    inputs:
+      zenith-address:
+        description: 'Address of the Zenith contract'
+        required: true
+        type: string
+      sequencer-admin-address:
+        description: 'Address of the sequencer admin account'
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  checks: read
+  contents: read
+  repository-projects: read
+    
+jobs:
+  solidity-base:
+    uses: init4tech/actions/.github/workflows/forge-script.yml@main
+    with:
+      github-environment: dev
+      forge-script-contract: ZenithScript
+      forge-script-signature: "setSequencerRole(address,address)"
+      forge-script-params: "${{ inputs.zenith-address }} ${{ inputs.sequencer-admin-address }}"
+    secrets:
+      aws-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
+      kms-key-id: ${{ secrets.HOLESKY_SEQUENCER_ADMIN_KEY_ID }}
+      rpc-url: ${{ secrets.HOLESKY_RPC_URL }}
