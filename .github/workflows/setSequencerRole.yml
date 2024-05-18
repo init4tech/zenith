@@ -10,12 +10,6 @@ on:
         description: 'Address of the sequencer admin account'
         required: true
         type: string
-
-permissions:
-  actions: read
-  checks: read
-  contents: read
-  repository-projects: read
     
 jobs:
   solidity-base:
