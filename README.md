@@ -2,6 +2,8 @@
 
 Solidity contracts for a next-gen rollup system.
 
+![test](https://github.com/init4tech/zenith/actions/workflows/test.yml/badge.svg) ![cd](https://github.com/init4tech/zenith/actions/workflows/cd.yml/badge.svg)
+
 ## Usage
 
 ### Build
