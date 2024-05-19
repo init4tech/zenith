@@ -1,5 +1,6 @@
 ## Zenith
 
+![rust](https://github.com/init4tech/zenith/actions/workflows/test.yml/badge.svg) ![rust](https://github.com/init4tech/zenith/actions/workflows/cd.yml/badge.svg)
 Solidity contracts for a next-gen rollup system.
 
 ## Usage
