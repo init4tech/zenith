@@ -13,8 +13,6 @@ contract ZenithScript is Script {
     {
         vm.startBroadcast();
         z = new Zenith(defaultRollupChainId, withdrawalAdmin, sequencerAdmin);
-        // send some ETH to newly deployed Zenith to populate some rollup state
-        z.enter{value: 0.00123 ether}(z.defaultRollupChainId(), msg.sender);
     }
 
     // NOTE: script must be run using SequencerAdmin key
