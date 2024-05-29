@@ -70,19 +70,15 @@ contract Passage {
         emit Enter(rollupChainId, token, rollupRecipient, amount);
     }
 
-    /// @notice Allows the admin to withdraw ETH from the contract.
-    /// @dev Only the admin can call this function.
-    function withdrawEth(address recipient, uint256 amount) external {
-        if (msg.sender != withdrawalAdmin) revert OnlyWithdrawalAdmin();
-        payable(recipient).transfer(amount);
-        emit Withdrawal(address(0), recipient, amount);
-    }
-
-    /// @notice Allows the admin to withdraw ERC20 tokens from the contract.
+    /// @notice Allows the admin to withdraw ETH or ERC20 tokens from the contract.
     /// @dev Only the admin can call this function.
     function withdraw(address token, address recipient, uint256 amount) external {
         if (msg.sender != withdrawalAdmin) revert OnlyWithdrawalAdmin();
-        IERC20(token).transfer(recipient, amount);
+        if (token == address(0)) {
+            payable(recipient).transfer(amount);
+        } else {
+            IERC20(token).transfer(recipient, amount);
+        }
         emit Withdrawal(token, recipient, amount);
     }
 
@@ -97,19 +93,14 @@ contract Passage {
     ///                    Corresponds to recipient_H in the RollupPassage contract.
     /// @param amount - The amount of the token to be transferred to the recipient.
     ///                 Corresponds to one or more amountOutMinimum_H in the RollupPassage contract.
-    function fulfillExit(uint256 rollupChainId, address token, address recipient, uint256 amount) external {
-        IERC20(token).transferFrom(msg.sender, recipient, amount);
+    function fulfillExit(uint256 rollupChainId, address token, address recipient, uint256 amount) external payable {
+        if (token == address(0)) {
+            require(amount == msg.value);
+            payable(recipient).transfer(msg.value);
+        } else {
+            IERC20(token).transferFrom(msg.sender, recipient, amount);
+        }
         emit ExitFulfilled(rollupChainId, token, recipient, amount);
-    }
-
-    /// @notice Fulfill a rollup Exit order
-    ///         The user calls `exit` on Rollup; the Builder calls `fulfillExit` on Host.
-    /// @custom:emits ExitFilled
-    /// @param recipient - The recipient of the token on host.
-    ///                    Corresponds to recipient_H in the RollupPassage contract.
-    function fulfillExitEth(uint256 rollupChainId, address recipient) external payable {
-        payable(recipient).transfer(msg.value);
-        emit ExitFulfilled(rollupChainId, address(0), recipient, msg.value);
     }
 }
 
@@ -161,57 +152,35 @@ contract RollupPassage {
         uint256 deadline,
         uint256 amountIn_RU,
         uint256 amountOutMinimum_H
-    ) external {
+    ) external payable {
         // check that the deadline hasn't passed
         if (block.timestamp >= deadline) revert OrderExpired();
 
-        IERC20(tokenIn_RU).transferFrom(msg.sender, address(this), amountIn_RU);
+        if (tokenIn_RU == address(0)) {
+            require(amountIn_RU == msg.value);
+        } else {
+            IERC20(tokenIn_RU).transferFrom(msg.sender, address(this), amountIn_RU);
+        }
 
         // emit the exit event
         emit Exit(tokenIn_RU, tokenOut_H, recipient_H, deadline, amountIn_RU, amountOutMinimum_H);
     }
 
-    /// @notice Request exit the rollup with native Ether.
-    /// @dev See `exit` docs above for dev details on exits.
-    /// @dev tokenIn_RU is set to address(0), native rollup Ether.
-    ///      amountIn_RU is set to msg.value.
-    /// @param tokenOut_H - The address of the token the user expects to receive on host.
-    /// @param recipient_H - The address of the recipient of tokenOut_H on host.
-    /// @param deadline - The deadline by which the exit order must be fulfilled.
-    /// @param amountOutMinimum_H - The minimum amount of tokenOut_H the user expects to receive on host.
-    /// @custom:reverts Expired if the deadline has passed.
-    /// @custom:emits Exit if the exit transaction succeeds.
-    function exitEth(address tokenOut_H, address recipient_H, uint256 deadline, uint256 amountOutMinimum_H)
-        external
-        payable
-    {
-        // check that the deadline hasn't passed
-        if (block.timestamp >= deadline) revert OrderExpired();
-
-        // emit the exit event
-        emit Exit(address(0), tokenOut_H, recipient_H, deadline, msg.value, amountOutMinimum_H);
-    }
-
     /// @notice Transfer the entire balance of ERC20 tokens to the recipient.
-    /// @dev Called by the Builder within the same block as users' `exit` transactions
+    /// @dev Called by the Builder within the same block as users' `swap` transactions
     ///      to claim the amounts of `tokenIn`.
     /// @dev Builder MUST ensure that no other account calls `sweep` before them.
     /// @param token - The token to transfer.
     /// @param recipient - The address to receive the tokens.
     function sweep(address token, address recipient) public {
-        uint256 balance = IERC20(token).balanceOf(address(this));
-        IERC20(token).transfer(recipient, balance);
+        uint256 balance;
+        if (token == address(0)) {
+            balance = address(this).balance;
+            payable(recipient).transfer(balance);
+        } else {
+            balance = IERC20(token).balanceOf(address(this));
+            IERC20(token).transfer(recipient, balance);
+        }
         emit Sweep(token, recipient, balance);
-    }
-
-    /// @notice Transfer the entire balance of native Ether to the recipient.
-    /// @dev Called by the Builder within the same block as users' `exit` transactions
-    ///      to claim the amounts of native Ether.
-    /// @dev Builder MUST ensure that no other account calls `sweepETH` before them.
-    /// @param recipient - The address to receive the native Ether.
-    function sweepEth(address payable recipient) public {
-        uint256 balance = address(this).balance;
-        recipient.transfer(balance);
-        emit Sweep(address(0), recipient, balance);
     }
 }
