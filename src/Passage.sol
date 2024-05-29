@@ -7,7 +7,7 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
 contract Passage {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
-    uint256 immutable defaultRollupChainId;
+    uint256 public immutable defaultRollupChainId;
 
     /// @notice The address that is allowed to withdraw funds from the contract.
     address public immutable withdrawalAdmin;
