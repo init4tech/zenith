@@ -22,7 +22,8 @@ contract Zenith is Passage {
     }
 
     /// @notice The sequence number of the next block that can be submitted for a given rollup chainId.
-    /// rollupChainId => nextSequence number
+    /// @dev Because sequences must start at 1, accessors must add 1 to this number.
+    /// rollupChainId => (nextSequence - 1)
     mapping(uint256 => uint256) sequences;
 
     /// @notice The host block number that a block was last submitted at for a given rollup chainId.
@@ -83,6 +84,7 @@ contract Zenith is Passage {
     }
 
     /// @notice Returns the next sequence number.
+    /// @dev Because sequences must start at 1, we add 1 to the mapping value.
     /// @param _rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
     /// @return The next sequence number.
     function nextSequence(uint256 _rollupChainId) public view returns (uint256) {
@@ -90,6 +92,7 @@ contract Zenith is Passage {
     }
 
     /// @notice Increments the sequence number and returns it.
+    /// @dev Because sequences must start at 1, we add 1 to the mapping value.
     /// @param _rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
     /// @return The next sequence number.
     function incrementSequence(uint256 _rollupChainId) internal returns (uint256) {
