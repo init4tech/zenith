@@ -22,8 +22,9 @@ contract Zenith is Passage {
     }
 
     /// @notice The sequence number of the next block that can be submitted for a given rollup chainId.
-    /// rollupChainId => nextSequence number
-    mapping(uint256 => uint256) public nextSequence;
+    /// @dev Because sequences must start at 1, accessors must add 1 to this number.
+    /// rollupChainId => (nextSequence - 1)
+    mapping(uint256 => uint256) sequences;
 
     /// @notice The host block number that a block was last submitted at for a given rollup chainId.
     /// rollupChainId => host blockNumber that block was last submitted at
@@ -82,6 +83,22 @@ contract Zenith is Passage {
         sequencerAdmin = _sequencerAdmin;
     }
 
+    /// @notice Returns the next sequence number.
+    /// @dev Because sequences must start at 1, we add 1 to the mapping value.
+    /// @param _rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
+    /// @return The next sequence number.
+    function nextSequence(uint256 _rollupChainId) public view returns (uint256) {
+        return sequences[_rollupChainId] + 1;
+    }
+
+    /// @notice Increments the sequence number and returns it.
+    /// @dev Because sequences must start at 1, we add 1 to the mapping value.
+    /// @param _rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
+    /// @return The next sequence number.
+    function incrementSequence(uint256 _rollupChainId) internal returns (uint256) {
+        return ++sequences[_rollupChainId];
+    }
+
     /// @notice Add a sequencer to the permissioned sequencer list.
     /// @param sequencer - the address of the sequencer to add.
     /// @custom:emits SequencerSet if the sequencer is added.
@@ -134,7 +151,7 @@ contract Zenith is Passage {
 
     function _submitBlock(BlockHeader memory header, bytes32 blockDataHash, uint8 v, bytes32 r, bytes32 s) internal {
         // assert that the sequence number is valid and increment it
-        uint256 _nextSequence = nextSequence[header.rollupChainId]++;
+        uint256 _nextSequence = incrementSequence(header.rollupChainId);
         if (_nextSequence != header.sequence) revert BadSequence(_nextSequence);
 
         // assert that confirmBy time has not passed

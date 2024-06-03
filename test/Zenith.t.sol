@@ -32,7 +32,7 @@ contract ZenithTest is Test {
 
         // set default block values
         header.rollupChainId = block.chainid + 1;
-        header.sequence = 0; // first block has index
+        header.sequence = 1; // first block has index 1
         header.confirmBy = block.timestamp + 10 minutes;
         header.gasLimit = 30_000_000;
         header.rewardAddress = address(this);
@@ -46,13 +46,13 @@ contract ZenithTest is Test {
     // cannot submit block with incorrect sequence number
     function test_badSequence() public {
         // change to incorrect sequence number
-        header.sequence = 1;
+        header.sequence = 100;
         commit = target.blockCommitment(header, blockDataHash);
 
         // sign block commitmenet with sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
-        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSequence.selector, 0));
+        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSequence.selector, 1));
         target.submitBlock(header, blockDataHash, v, r, s, blockData);
     }
 
