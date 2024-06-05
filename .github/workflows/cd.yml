@@ -54,6 +54,7 @@ jobs:
       forge-deployment-params: "17001 0x11Aa4EBFbf7a481617c719a2Df028c9DA1a219aa 0x29403F107781ea45Bf93710abf8df13F67f2008f"
       etherscan-url: https://holesky.etherscan.io
       chain-id: 17000
+      deployer-address: ${{ inputs.HOLESKY_DEPLOYER_ADDRESS }}
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
