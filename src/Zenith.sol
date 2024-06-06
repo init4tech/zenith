@@ -121,7 +121,7 @@ contract Zenith is Passage {
     /// @notice Submit a rollup block.
     /// @dev Blocks are submitted by Builders, with an attestation to the block signed by a Sequencer.
     /// @param header - the header information for the rollup block.
-    /// @param blockDataHash - keccak256(blockData). the Node will discard the block if the hash doens't match.
+    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match transactions provided.
     /// @dev including blockDataHash allows the sequencer to sign over finalized block data, without needing to calldatacopy the `blockData` param.
     /// @param v - the v component of the Sequencer's ECSDA signature over the block header.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block header.
