@@ -102,6 +102,7 @@ contract RollupPassage {
     /// @param amount - The amount of the ERC20 token to mint on the Rollup, corresponding to the amount locked on L1.
     /// @custom:emits Exit indicating the the desired recipient on the host chain.
     function enter(address token, address rollupRecipient, uint256 amount) external {
+        // TODO: important that no code is deployed to hostPassage address on the rollup :think:
         if (msg.sender != hostPassage) revert OnlyHostPassage();
         // TODO: IERC20(token).mint(recipient, amount);
         emit Enter(token, rollupRecipient, amount);
