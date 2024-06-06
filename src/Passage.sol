@@ -96,6 +96,17 @@ contract RollupPassage {
         hostPassage = _hostPassage;
     }
 
+    /// @notice Allows ERC20s to enter the rollup from L1.
+    /// @param token - The address of the L1 ERC20 token to mint a representation for.
+    /// @param rollupRecipient - The recipient of the ERC20 tokens on the rollup, specified by the sender on L1.
+    /// @param amount - The amount of the ERC20 token to mint on the Rollup, corresponding to the amount locked on L1.
+    /// @custom:emits Exit indicating the the desired recipient on the host chain.
+    function enter(address token, address rollupRecipient, uint256 amount) external {
+        if (msg.sender != hostPassage) revert OnlyHostPassage();
+        // TODO: IERC20(token).mint(recipient, amount);
+        emit Enter(token, rollupRecipient, amount);
+    }
+
     /// @notice Allows native Ether to exit the rollup.
     /// @dev Rollup node will burn the msg.value.
     /// @param recipient - The desired recipient of the Ether on the host chain.
@@ -113,16 +124,5 @@ contract RollupPassage {
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         // TODO: IERC20(token).burn(msg.sender, amount);
         emit Exit(token, recipient, amount);
-    }
-
-    /// @notice Allows ERC20s to enter the rollup from L1.
-    /// @param token - The address of the L1 ERC20 token to mint a representation for.
-    /// @param rollupRecipient - The recipient of the ERC20 tokens on the rollup, specified by the sender on L1.
-    /// @param amount - The amount of the ERC20 token to mint on the Rollup, corresponding to the amount locked on L1.
-    /// @custom:emits Exit indicating the the desired recipient on the host chain.
-    function enter(address token, address rollupRecipient, uint256 amount) external {
-        if (msg.sender != hostPassage) revert OnlyHostPassage();
-        // TODO: IERC20(token).mint(recipient, amount);
-        emit Enter(token, rollupRecipient, amount);
     }
 }
