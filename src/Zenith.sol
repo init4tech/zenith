@@ -13,12 +13,16 @@ contract Zenith is Passage {
     /// @param confirmBy - the timestamp by which the block must be submitted. Enforced by the contract.
     /// @param gasLimit - the gas limit for the rollup block. Ignored by the contract; enforced by the Node.
     /// @param rewardAddress - the address to receive the rollup block reward. Ignored by the contract; enforced by the Node.
+    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match.
+    ///                        this allows the sequencer to sign over finalized set of transactions,
+    ///                        without the Zenith contract needing to interact with raw transaction data (which may be provided via blobs or calldata).
     struct BlockHeader {
         uint256 rollupChainId;
         uint256 sequence;
         uint256 confirmBy;
         uint256 gasLimit;
         address rewardAddress;
+        bytes32 blockDataHash;
     }
 
     /// @notice The sequence number of the next block that can be submitted for a given rollup chainId.
@@ -43,8 +47,8 @@ contract Zenith is Passage {
     error BlockExpired();
 
     /// @notice Thrown when a block submission is attempted with a signature by a non-permissioned sequencer,
-    ///         OR when signature is produced over different data than is provided.
-    /// @param derivedSequencer - the derived signer of the block data that is not a permissioned sequencer.
+    ///         OR when signature is produced over different block header than is provided.
+    /// @param derivedSequencer - the derived signer of the block header that is not a permissioned sequencer.
     error BadSignature(address derivedSequencer);
 
     /// @notice Thrown when attempting to submit more than one rollup block per host block
@@ -60,7 +64,8 @@ contract Zenith is Passage {
     /// @param confirmBy - the timestamp by which the block must be submitted.
     /// @param gasLimit - the gas limit for the rollup block.
     /// @param rewardAddress - the address to receive the rollup block reward.
-    /// @param blockDataHash - keccak256(blockData). the Node will discard the block if the hash doens't match.
+    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match transactions provided.
+    /// @dev including blockDataHash allows the sequencer to sign over finalized block data, without needing to calldatacopy the `blockData` param.
     event BlockSubmitted(
         address indexed sequencer,
         uint256 indexed rollupChainId,
@@ -121,8 +126,6 @@ contract Zenith is Passage {
     /// @notice Submit a rollup block.
     /// @dev Blocks are submitted by Builders, with an attestation to the block signed by a Sequencer.
     /// @param header - the header information for the rollup block.
-    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match transactions provided.
-    /// @dev including blockDataHash allows the sequencer to sign over finalized block data, without needing to calldatacopy the `blockData` param.
     /// @param v - the v component of the Sequencer's ECSDA signature over the block header.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block header.
     /// @param s - the s component of the Sequencer's ECSDA signature over the block header.
@@ -132,14 +135,7 @@ contract Zenith is Passage {
     ///                 OR if the signature provided commits to a different header.
     /// @custom:reverts OneRollupBlockPerHostBlock if attempting to submit a second rollup block within one host block.
     /// @custom:emits BlockSubmitted if the block is successfully submitted.
-    function submitBlock(
-        BlockHeader memory header,
-        bytes32 blockDataHash,
-        uint8 v,
-        bytes32 r,
-        bytes32 s,
-        bytes calldata
-    ) external {
+    function submitBlock(BlockHeader memory header, uint8 v, bytes32 r, bytes32 s, bytes calldata) external {
         // assert that the sequence number is valid and increment it
         uint256 _nextSequence = incrementSequence(header.rollupChainId);
         if (_nextSequence != header.sequence) revert BadSequence(_nextSequence);
@@ -148,7 +144,7 @@ contract Zenith is Passage {
         if (block.timestamp > header.confirmBy) revert BlockExpired();
 
         // derive sequencer from signature over block header
-        bytes32 blockCommit = blockCommitment(header, blockDataHash);
+        bytes32 blockCommit = blockCommitment(header);
         address sequencer = ecrecover(blockCommit, v, r, s);
 
         // assert that signature is valid && sequencer is permissioned
@@ -166,14 +162,14 @@ contract Zenith is Passage {
             header.confirmBy,
             header.gasLimit,
             header.rewardAddress,
-            blockDataHash
+            header.blockDataHash
         );
     }
 
     /// @notice Construct hash of block details that the sequencer signs.
     /// @param header - the header information for the rollup block.
     /// @return commit - the hash of the encoded block details.
-    function blockCommitment(BlockHeader memory header, bytes32 blockDataHash) public view returns (bytes32 commit) {
+    function blockCommitment(BlockHeader memory header) public view returns (bytes32 commit) {
         bytes memory encoded = abi.encodePacked(
             "init4.sequencer.v0",
             block.chainid,
@@ -182,7 +178,7 @@ contract Zenith is Passage {
             header.gasLimit,
             header.confirmBy,
             header.rewardAddress,
-            blockDataHash
+            header.blockDataHash
         );
         commit = keccak256(encoded);
     }
