@@ -71,9 +71,6 @@ contract Zenith is Passage {
         bytes32 blockDataHash
     );
 
-    /// @notice Emit the entire block data for easy visibility
-    event BlockData(bytes blockData);
-
     /// @notice Emitted when a sequencer is added or removed.
     event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
@@ -121,35 +118,28 @@ contract Zenith is Passage {
         emit SequencerSet(sequencer, false);
     }
 
-    /// @notice Submit a rollup block with block data submitted via calldata.
-    /// @dev Blocks are submitted by Builders, with an attestation to the block data signed by a Sequencer.
+    /// @notice Submit a rollup block.
+    /// @dev Blocks are submitted by Builders, with an attestation to the block signed by a Sequencer.
     /// @param header - the header information for the rollup block.
     /// @param blockDataHash - keccak256(blockData). the Node will discard the block if the hash doens't match.
     /// @dev including blockDataHash allows the sequencer to sign over finalized block data, without needing to calldatacopy the `blockData` param.
     /// @param v - the v component of the Sequencer's ECSDA signature over the block header.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block header.
     /// @param s - the s component of the Sequencer's ECSDA signature over the block header.
-    /// @param blockData - block data information. could be packed blob hashes, or direct rlp-encoded transctions. blockData is ignored by the contract logic.
     /// @custom:reverts BadSequence if the sequence number is not the next block for the given rollup chainId.
     /// @custom:reverts BlockExpired if the confirmBy time has passed.
     /// @custom:reverts BadSignature if the signer is not a permissioned sequencer,
     ///                 OR if the signature provided commits to a different header.
     /// @custom:reverts OneRollupBlockPerHostBlock if attempting to submit a second rollup block within one host block.
     /// @custom:emits BlockSubmitted if the block is successfully submitted.
-    /// @custom:emits BlockData to expose the block calldata; as a convenience until calldata tracing is implemented in the Node.
     function submitBlock(
         BlockHeader memory header,
         bytes32 blockDataHash,
         uint8 v,
         bytes32 r,
         bytes32 s,
-        bytes calldata blockData
+        bytes calldata
     ) external {
-        _submitBlock(header, blockDataHash, v, r, s);
-        emit BlockData(blockData);
-    }
-
-    function _submitBlock(BlockHeader memory header, bytes32 blockDataHash, uint8 v, bytes32 r, bytes32 s) internal {
         // assert that the sequence number is valid and increment it
         uint256 _nextSequence = incrementSequence(header.rollupChainId);
         if (_nextSequence != header.sequence) revert BadSequence(_nextSequence);
