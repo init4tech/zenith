@@ -10,8 +10,8 @@ contract ZenithTest is Test {
     Zenith.BlockHeader header;
     bytes32 commit;
     /// @dev blockData is ignored by the contract. it's included for the purpose of DA for the node.
-    bytes blockData = "0x1234567890abcdef";
     bytes32 blockDataHash;
+    bytes blockData = "";
 
     uint256 sequencerKey = 123;
     uint256 notSequencerKey = 300;
