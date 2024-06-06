@@ -3,38 +3,9 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-contract BasePassage {
-    /// @notice Emitted when an swap order is fulfilled by the Builder.
-    /// @param originChainId - The chainId on which the swap order was submitted.
-    /// @param token - The address of the token transferred to the recipient. address(0) corresponds to native Ether.
-    /// @param recipient - The recipient of the token.
-    /// @param amount - The amount of the token transferred to the recipient.
-    event SwapFulfilled(
-        uint256 indexed originChainId, address indexed token, address indexed recipient, uint256 amount
-    );
-
-    /// @notice Fulfill a rollup Swap order.
-    ///         The user calls `swap` on a rollup; the Builder calls `fulfillSwap` on the target chain.
-    /// @custom:emits SwapFulfilled
-    /// @param originChainId - The chainId of the rollup on which `swap` was called.
-    /// @param token - The address of the token to be transferred to the recipient.
-    ///                address(0) corresponds to native Ether.
-    /// @param recipient - The recipient of the token.
-    /// @param amount - The amount of the token to be transferred to the recipient.
-    function fulfillSwap(uint256 originChainId, address token, address recipient, uint256 amount) external payable {
-        if (token == address(0)) {
-            require(amount == msg.value);
-            payable(recipient).transfer(msg.value);
-        } else {
-            IERC20(token).transferFrom(msg.sender, recipient, amount);
-        }
-        emit SwapFulfilled(originChainId, token, recipient, amount);
-    }
-}
-
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
-contract Passage is BasePassage {
+contract Passage {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
 
@@ -71,7 +42,6 @@ contract Passage is BasePassage {
     }
 
     /// @notice Allows native Ether to enter the rollup.
-    /// @dev Permanently burns the entire msg.value by locking it in this contract.
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
     /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
@@ -80,7 +50,6 @@ contract Passage is BasePassage {
     }
 
     /// @notice Allows ERC20s to enter the rollup.
-    /// @dev Permanently burns the token amount by locking it in this contract.
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
     /// @param token - The address of the ERC20 token on the Host.
@@ -104,83 +73,56 @@ contract Passage is BasePassage {
     }
 }
 
-/// @notice A contract deployed to the Rollup that allows users to atomically exchange tokens on the Rollup for tokens on the Host.
-contract RollupPassage is BasePassage {
-    /// @notice Thrown when an swap transaction is submitted with a deadline that has passed.
-    error OrderExpired();
+/// @notice A contract deployed to the Rollup that allows users to remove tokens from the Rollup TVL back to the Host.
+contract RollupPassage {
+    address public immutable hostPassage;
 
-    /// @notice Emitted when an swap order is successfully processed, indicating it was also fulfilled on the target chain.
-    /// @dev See `swap` for parameter docs.
-    event Swap(
-        uint256 indexed targetChainId,
-        address indexed tokenIn,
-        address indexed tokenOut,
-        address recipient,
-        uint256 deadline,
-        uint256 amountIn,
-        uint256 amountOut
-    );
+    /// @notice Thrown when attempting to mint ERC20s if not the host passage contract.
+    error OnlyHostPassage();
 
-    /// @notice Emitted when tokens or native Ether is swept from the contract.
-    /// @dev Intended to improve visibility for Builders to ensure Sweep isn't called unexpectedly.
-    ///      Intentionally does not bother to emit which token(s) were swept, nor their amounts.
-    event Sweep(address indexed token, address indexed recipient, uint256 amount);
+    /// @notice Emitted when tokens exit the rollup.
+    /// @param token - The address of the token exiting the rollup.
+    /// @param recipient - The desired recipient of the token on the host chain.
+    /// @param amount - The amount of the token entering the rollup.
+    event Exit(address indexed token, address indexed recipient, uint256 amount);
 
-    /// @notice Request to swap ERC20s.
-    /// @dev tokenIn is provided on the rollup; in exchange,
-    ///      tokenOut is expected to be received on targetChainId.
-    /// @dev targetChainId may be the current chainId, the Host chainId, or..
-    /// @dev Fees paid to the Builders for fulfilling the swap orders
-    ///      can be included within the "exchange rate" between tokenIn and tokenOut.
-    /// @dev The Builder claims the tokenIn from the contract by submitting a transaction to `sweep` the tokens within the same block.
-    /// @dev The Rollup STF MUST NOT apply `swap` transactions to the rollup state
-    ///      UNLESS a sufficient SwapFulfilled event is emitted on the target chain within the same block.
-    /// @param targetChainId - The chain on which tokens should be output.
-    /// @param tokenIn - The address of the token the user supplies as the input on the rollup for the trade.
-    /// @param tokenOut - The address of the token the user expects to receive on the target chain.
-    /// @param recipient - The address of the recipient of tokenOut on the target chain.
-    /// @param deadline - The deadline by which the swap order must be fulfilled.
-    /// @param amountIn - The amount of tokenIn the user supplies as the input on the rollup for the trade.
-    /// @param amountOut - The minimum amount of tokenOut the user expects to receive on the target chain.
-    /// @custom:reverts Expired if the deadline has passed.
-    /// @custom:emits Swap if the swap transaction succeeds.
-    function swap(
-        uint256 targetChainId,
-        address tokenIn,
-        address tokenOut,
-        address recipient,
-        uint256 deadline,
-        uint256 amountIn,
-        uint256 amountOut
-    ) external payable {
-        // check that the deadline hasn't passed
-        if (block.timestamp >= deadline) revert OrderExpired();
+    /// @notice Emitted when ERC20 tokens are minted on the rollup.
+    /// @param token - The address of the ERC20 token entering the rollup.
+    /// @param rollupRecipient - The recipient of the ERC20 token on the rollup.
+    /// @param amount - The amount of the ERC20 token entering the rollup.
+    event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
 
-        if (tokenIn == address(0)) {
-            require(amountIn == msg.value);
-        } else {
-            IERC20(tokenIn).transferFrom(msg.sender, address(this), amountIn);
-        }
-
-        // emit the swap event
-        emit Swap(targetChainId, tokenIn, tokenOut, recipient, deadline, amountIn, amountOut);
+    constructor(address _hostPassage) {
+        hostPassage = _hostPassage;
     }
 
-    /// @notice Transfer the entire balance of ERC20 tokens to the recipient.
-    /// @dev Called by the Builder within the same block as users' `swap` transactions
-    ///      to claim the amounts of `tokenIn`.
-    /// @dev Builder MUST ensure that no other account calls `sweep` before them.
-    /// @param token - The token to transfer.
-    /// @param recipient - The address to receive the tokens.
-    function sweep(address token, address recipient) public {
-        uint256 balance;
-        if (token == address(0)) {
-            balance = address(this).balance;
-            payable(recipient).transfer(balance);
-        } else {
-            balance = IERC20(token).balanceOf(address(this));
-            IERC20(token).transfer(recipient, balance);
-        }
-        emit Sweep(token, recipient, balance);
+    /// @notice Allows native Ether to exit the rollup.
+    /// @dev Rollup node will burn the msg.value.
+    /// @param recipient - The desired recipient of the Ether on the host chain.
+    /// @custom:emits Exit indicating the amount of Ether to burn on the rollup & the recipient on the host chain.
+    function exit(address recipient) public payable {
+        emit Exit(address(0), recipient, msg.value);
+    }
+
+    /// @notice Allows ERC20s to exit the rollup.
+    /// @param recipient - The desired recipient of the ERC20s on the host chain.
+    /// @param token - The address of the ERC20 token on the Rollup.
+    /// @param amount - The amount of the ERC20 token to burn on the Rollup.
+    /// @custom:emits Exit indicating the the desired recipient on the host chain.
+    function exit(address token, address recipient, uint256 amount) external payable {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        // TODO: IERC20(token).burn(msg.sender, amount);
+        emit Exit(token, recipient, amount);
+    }
+
+    /// @notice Allows ERC20s to enter the rollup from L1.
+    /// @param token - The address of the L1 ERC20 token to mint a representation for.
+    /// @param rollupRecipient - The recipient of the ERC20 tokens on the rollup, specified by the sender on L1.
+    /// @param amount - The amount of the ERC20 token to mint on the Rollup, corresponding to the amount locked on L1.
+    /// @custom:emits Exit indicating the the desired recipient on the host chain.
+    function enter(address token, address rollupRecipient, uint256 amount) external {
+        if (msg.sender != hostPassage) revert OnlyHostPassage();
+        // TODO: IERC20(token).mint(recipient, amount);
+        emit Enter(token, rollupRecipient, amount);
     }
 }

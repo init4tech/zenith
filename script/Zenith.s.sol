@@ -3,16 +3,27 @@ pragma solidity ^0.8.24;
 
 import {Script} from "forge-std/Script.sol";
 import {Zenith} from "../src/Zenith.sol";
+import {HostMarket, RollupMarket} from "../src/Market.sol";
+import {RollupPassage} from "../src/Passage.sol";
 
 contract ZenithScript is Script {
     // deploy:
     // forge script ZenithScript --sig "deploy(uint256,address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $SEQUENCER_ADMIN_ADDRESS
     function deploy(uint256 defaultRollupChainId, address withdrawalAdmin, address sequencerAdmin)
         public
-        returns (Zenith z)
+        returns (Zenith z, HostMarket m)
     {
         vm.startBroadcast();
         z = new Zenith(defaultRollupChainId, withdrawalAdmin, sequencerAdmin);
+        m = new HostMarket();
+    }
+
+    // deploy:
+    // forge script ZenithScript --sig "deployL2()" --rpc-url $L2_RPC_URL --private-key $PRIVATE_KEY --broadcast $ZENITH_ADDRESS
+    function deployL2(address zenith) public returns (RollupPassage p, RollupMarket m) {
+        vm.startBroadcast();
+        p = new RollupPassage(zenith);
+        m = new RollupMarket();
     }
 
     // NOTE: script must be run using SequencerAdmin key
