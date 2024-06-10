@@ -42,6 +42,13 @@ contract Passage {
     }
 
     /// @notice Allows native Ether to enter the rollup.
+    /// @param rollupRecipient - The recipient of the Ether on the rollup.
+    /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
+    function enter(address rollupRecipient) public payable {
+        enter(defaultRollupChainId, rollupRecipient);
+    }
+
+    /// @notice Allows native Ether to enter the rollup.
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
     /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
