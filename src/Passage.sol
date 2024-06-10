@@ -71,26 +71,11 @@ contract Passage {
 
 /// @notice A contract deployed to the Rollup that allows users to remove tokens from the Rollup TVL back to the Host.
 contract RollupPassage {
-    address public immutable hostPassage;
-
-    /// @notice Thrown when attempting to mint ERC20s if not the host passage contract.
-    error OnlyHostPassage();
-
     /// @notice Emitted when tokens exit the rollup.
     /// @param token - The address of the token exiting the rollup.
     /// @param recipient - The desired recipient of the token on the host chain.
     /// @param amount - The amount of the token entering the rollup.
     event Exit(address indexed token, address indexed recipient, uint256 amount);
-
-    /// @notice Emitted when ERC20 tokens are minted on the rollup.
-    /// @param token - The address of the ERC20 token entering the rollup.
-    /// @param rollupRecipient - The recipient of the ERC20 token on the rollup.
-    /// @param amount - The amount of the ERC20 token entering the rollup.
-    event Enter(address indexed token, address indexed rollupRecipient, uint256 amount);
-
-    constructor(address _hostPassage) {
-        hostPassage = _hostPassage;
-    }
 
     /// @notice Allows native Ether to exit the rollup.
     /// @dev Rollup node will burn the msg.value.
