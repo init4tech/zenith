@@ -68,20 +68,3 @@ contract Passage {
         emit Withdrawal(token, recipient, amount);
     }
 }
-
-/// @notice A contract deployed to the Rollup that allows users to remove tokens from the Rollup TVL back to the Host.
-contract RollupPassage {
-    /// @notice Emitted when tokens exit the rollup.
-    /// @param token - The address of the token exiting the rollup.
-    /// @param recipient - The desired recipient of the token on the host chain.
-    /// @param amount - The amount of the token entering the rollup.
-    event Exit(address indexed token, address indexed recipient, uint256 amount);
-
-    /// @notice Allows native Ether to exit the rollup.
-    /// @dev Rollup node will burn the msg.value.
-    /// @param recipient - The desired recipient of the Ether on the host chain.
-    /// @custom:emits Exit indicating the amount of Ether to burn on the rollup & the recipient on the host chain.
-    function exit(address recipient) public payable {
-        emit Exit(address(0), recipient, msg.value);
-    }
-}

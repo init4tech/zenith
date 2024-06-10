@@ -4,7 +4,6 @@ pragma solidity ^0.8.24;
 import {Script} from "forge-std/Script.sol";
 import {Zenith} from "../src/Zenith.sol";
 import {HostOrders, RollupOrders} from "../src/Orders.sol";
-import {RollupPassage} from "../src/Passage.sol";
 
 contract ZenithScript is Script {
     // deploy:
@@ -20,9 +19,8 @@ contract ZenithScript is Script {
 
     // deploy:
     // forge script ZenithScript --sig "deployL2()" --rpc-url $L2_RPC_URL --private-key $PRIVATE_KEY --broadcast $ZENITH_ADDRESS
-    function deployL2(address zenith) public returns (RollupPassage p, RollupOrders m) {
+    function deployL2(address zenith) public returns (RollupOrders m) {
         vm.startBroadcast();
-        p = new RollupPassage();
         m = new RollupOrders();
     }
 
