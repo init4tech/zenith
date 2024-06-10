@@ -4,7 +4,7 @@ pragma solidity ^0.8.24;
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
-contract OrderFulfiller {
+abstract contract OrderDestination {
     /// @notice Emitted when an swap order is fulfilled by the Builder.
     /// @param originChainId - The chainId on which the swap order was submitted.
     /// @param token - The address of the token transferred to the recipient. address(0) corresponds to native Ether.
@@ -34,7 +34,7 @@ contract OrderFulfiller {
 }
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
-contract OrderInitiator {
+abstract contract OrderOrigin {
     /// @notice Thrown when an swap transaction is submitted with a deadline that has passed.
     error OrderExpired();
 
@@ -114,7 +114,6 @@ contract OrderInitiator {
     }
 }
 
-// TODO: i don't like this. i will do something else.
-contract HostMarket is OrderFulfiller {}
+contract HostOrders is OrderDestination {}
 
-contract RollupMarket is OrderInitiator, OrderFulfiller {}
+contract RollupOrders is OrderOrigin, OrderDestination {}
