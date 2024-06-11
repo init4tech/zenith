@@ -81,12 +81,18 @@ contract Passage {
         uint256 value,
         uint256 gas,
         uint256 maxFeePerGas
-    ) public {
+    ) public payable {
+        if (msg.value > 0) {
+            enter(rollupChainId, msg.sender);
+        }
         emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
     /// @dev See `transact` above for docs.
-    function transact(address to, bytes calldata data, uint256 value, uint256 gas, uint256 maxFeePerGas) external {
+    function transact(address to, bytes calldata data, uint256 value, uint256 gas, uint256 maxFeePerGas)
+        external
+        payable
+    {
         transact(defaultRollupChainId, to, data, value, gas, maxFeePerGas);
     }
 
