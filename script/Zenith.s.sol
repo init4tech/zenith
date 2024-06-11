@@ -18,8 +18,8 @@ contract ZenithScript is Script {
     }
 
     // deploy:
-    // forge script ZenithScript --sig "deployL2()" --rpc-url $L2_RPC_URL --private-key $PRIVATE_KEY --broadcast $ZENITH_ADDRESS
-    function deployL2(address zenith) public returns (RollupOrders m) {
+    // forge script ZenithScript --sig "deployL2()" --rpc-url $L2_RPC_URL --private-key $PRIVATE_KEY --broadcast
+    function deployL2() public returns (RollupOrders m) {
         vm.startBroadcast();
         m = new RollupOrders();
     }
