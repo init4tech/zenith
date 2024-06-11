@@ -15,11 +15,10 @@ contract Passage {
     /// @notice Thrown when attempting to withdraw funds if not withdrawal admin.
     error OnlyWithdrawalAdmin();
 
-    /// @notice Emitted when tokens enter the rollup.
-    /// @param token - The address of the token entering the rollup.
-    /// @param rollupRecipient - The recipient of the token on the rollup.
-    /// @param amount - The amount of the token entering the rollup.
-    event Enter(uint256 indexed rollupChainId, address indexed token, address indexed rollupRecipient, uint256 amount);
+    /// @notice Emitted when Ether enters the rollup.
+    /// @param rollupRecipient - The recipient of Ether on the rollup.
+    /// @param amount - The amount of Ether entering the rollup.
+    event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
     /// @notice Emitted when the admin withdraws tokens from the contract.
     event Withdrawal(address indexed token, address indexed recipient, uint256 amount);
@@ -42,18 +41,17 @@ contract Passage {
     }
 
     /// @notice Allows native Ether to enter the rollup.
-    /// @param rollupRecipient - The recipient of the Ether on the rollup.
-    /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
-    function enter(address rollupRecipient) public payable {
-        enter(defaultRollupChainId, rollupRecipient);
-    }
-
-    /// @notice Allows native Ether to enter the rollup.
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
     /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
     function enter(uint256 rollupChainId, address rollupRecipient) public payable {
-        emit Enter(rollupChainId, address(0), rollupRecipient, msg.value);
+        emit Enter(rollupChainId, rollupRecipient, msg.value);
+    }
+
+    /// @notice Allows native Ether to enter the default rollup.
+    /// @dev see `enter` above for docs.
+    function enter(address rollupRecipient) external payable {
+        enter(defaultRollupChainId, rollupRecipient);
     }
 
     /// @notice Allows the admin to withdraw ETH or ERC20 tokens from the contract.
