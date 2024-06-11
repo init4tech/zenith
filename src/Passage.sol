@@ -28,8 +28,7 @@ contract Passage {
         bytes data,
         uint256 value,
         uint256 gas,
-        uint256 maxPrioFee,
-        uint256 maxBaseFee
+        uint256 maxFeePerGas
     );
 
     /// @notice Emitted when the admin withdraws tokens from the contract.
@@ -73,8 +72,7 @@ contract Passage {
     /// @param data - The data to send to the rollup.
     /// @param value - The amount of Ether to send on the rollup.
     /// @param gas - The gas limit for the transaction.
-    /// @param maxPrioFee - The maximum priority fee for the transaction.
-    /// @param maxBaseFee - The maximum base fee for the transaction.
+    /// @param maxFeePerGas - The maximum fee per gas for the transaction (per EIP-1559).
     /// @custom:emits Transact indicating the transaction to mine on the rollup.
     function transact(
         uint256 rollupChainId,
@@ -82,22 +80,14 @@ contract Passage {
         bytes calldata data,
         uint256 value,
         uint256 gas,
-        uint256 maxPrioFee,
-        uint256 maxBaseFee
+        uint256 maxFeePerGas
     ) public {
-        emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxPrioFee, maxBaseFee);
+        emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
     /// @dev See `transact` above for docs.
-    function transact(
-        address to,
-        bytes calldata data,
-        uint256 value,
-        uint256 gas,
-        uint256 maxPrioFee,
-        uint256 maxBaseFee
-    ) external {
-        transact(defaultRollupChainId, to, data, value, gas, maxPrioFee, maxBaseFee);
+    function transact(address to, bytes calldata data, uint256 value, uint256 gas, uint256 maxFeePerGas) external {
+        transact(defaultRollupChainId, to, data, value, gas, maxFeePerGas);
     }
 
     /// @notice Allows the admin to withdraw ETH or ERC20 tokens from the contract.
