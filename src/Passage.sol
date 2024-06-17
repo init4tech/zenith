@@ -82,10 +82,7 @@ contract Passage {
         uint256 gas,
         uint256 maxFeePerGas
     ) public payable {
-        if (msg.value > 0) {
-            enter(rollupChainId, msg.sender);
-        }
-        emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
+        enterTransact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
     /// @dev See `transact` above for docs.
@@ -93,7 +90,32 @@ contract Passage {
         external
         payable
     {
-        transact(defaultRollupChainId, to, data, value, gas, maxFeePerGas);
+        enterTransact(defaultRollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
+    }
+
+    /// @notice Send Ether on the rollup, send a special transaction to be sent to the rollup with sender == L1 msg.sender.
+    /// @dev Enter and Transact are processed after normal rollup block execution.
+    /// @param rollupChainId - The rollup chain to send the transaction to.
+    /// @param etherRecipient - The recipient of the ether.
+    /// @param to - The address to call on the rollup.
+    /// @param data - The data to send to the rollup.
+    /// @param value - The amount of Ether to send on the rollup.
+    /// @param gas - The gas limit for the transaction.
+    /// @param maxFeePerGas - The maximum fee per gas for the transaction (per EIP-1559).
+    /// @custom:emits Transact indicating the transaction to mine on the rollup.
+    function enterTransact(
+        uint256 rollupChainId,
+        address etherRecipient,
+        address to,
+        bytes calldata data,
+        uint256 value,
+        uint256 gas,
+        uint256 maxFeePerGas
+    ) public payable {
+        if (msg.value > 0) {
+            enter(rollupChainId, etherRecipient);
+        }
+        emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
     /// @notice Allows the admin to withdraw ETH or ERC20 tokens from the contract.
