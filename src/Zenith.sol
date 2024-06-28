@@ -6,11 +6,12 @@ import {Passage} from "./Passage.sol";
 contract Zenith is Passage {
     /// @notice The address that is allowed to set/remove sequencers.
     address public immutable sequencerAdmin;
+    /// @notice The block number at which the Zenith contract was deployed.
+    uint256 public immutable deployBlockNumber;
 
     /// @notice Block header information for the rollup block, signed by the sequencer.
     /// @param rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
-    /// @param sequence - the sequence number of the rollup block. Must be monotonically increasing. Enforced by the contract.
-    /// @param confirmBy - the timestamp by which the block must be submitted. Enforced by the contract.
+    /// @param hostBlockNumber - the host block number in which the rollup block must be submitted. Enforced by the contract.
     /// @param gasLimit - the gas limit for the rollup block. Ignored by the contract; enforced by the Node.
     /// @param rewardAddress - the address to receive the rollup block reward. Ignored by the contract; enforced by the Node.
     /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match.
@@ -18,17 +19,11 @@ contract Zenith is Passage {
     ///                        without the Zenith contract needing to interact with raw transaction data (which may be provided via blobs or calldata).
     struct BlockHeader {
         uint256 rollupChainId;
-        uint256 sequence;
-        uint256 confirmBy;
+        uint256 hostBlockNumber;
         uint256 gasLimit;
         address rewardAddress;
         bytes32 blockDataHash;
     }
-
-    /// @notice The sequence number of the next block that can be submitted for a given rollup chainId.
-    /// @dev Because sequences must start at 1, accessors must add 1 to this number.
-    /// rollupChainId => (nextSequence - 1)
-    mapping(uint256 => uint256) sequences;
 
     /// @notice The host block number that a block was last submitted at for a given rollup chainId.
     /// rollupChainId => host blockNumber that block was last submitted at
@@ -38,13 +33,8 @@ contract Zenith is Passage {
     /// address => TRUE if it's a permissioned sequencer
     mapping(address => bool) public isSequencer;
 
-    /// @notice Thrown when a block submission is attempted with a sequence number that is not the next block for the rollup chainId.
-    /// @dev Blocks must be submitted in strict monotonic increasing order.
-    /// @param expected - the correct next sequence number for the given rollup chainId.
-    error BadSequence(uint256 expected);
-
-    /// @notice Thrown when a block submission is attempted when the confirmBy time has passed.
-    error BlockExpired();
+    /// @notice Thrown when a block submission is attempted in the incorrect host block.
+    error IncorrectHostBlock();
 
     /// @notice Thrown when a block submission is attempted with a signature by a non-permissioned sequencer,
     ///         OR when signature is produced over different block header than is provided.
@@ -60,8 +50,6 @@ contract Zenith is Passage {
     /// @notice Emitted when a new rollup block is successfully submitted.
     /// @param sequencer - the address of the sequencer that signed the block.
     /// @param rollupChainId - the chainId of the rollup chain.
-    /// @param sequence - the sequence number of the rollup block.
-    /// @param confirmBy - the timestamp by which the block must be submitted.
     /// @param gasLimit - the gas limit for the rollup block.
     /// @param rewardAddress - the address to receive the rollup block reward.
     /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match transactions provided.
@@ -69,8 +57,6 @@ contract Zenith is Passage {
     event BlockSubmitted(
         address indexed sequencer,
         uint256 indexed rollupChainId,
-        uint256 indexed sequence,
-        uint256 confirmBy,
         uint256 gasLimit,
         address rewardAddress,
         bytes32 blockDataHash
@@ -83,22 +69,7 @@ contract Zenith is Passage {
         Passage(_defaultRollupChainId, _withdrawalAdmin)
     {
         sequencerAdmin = _sequencerAdmin;
-    }
-
-    /// @notice Returns the next sequence number.
-    /// @dev Because sequences must start at 1, we add 1 to the mapping value.
-    /// @param _rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
-    /// @return The next sequence number.
-    function nextSequence(uint256 _rollupChainId) public view returns (uint256) {
-        return sequences[_rollupChainId] + 1;
-    }
-
-    /// @notice Increments the sequence number and returns it.
-    /// @dev Because sequences must start at 1, we add 1 to the mapping value.
-    /// @param _rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
-    /// @return The next sequence number.
-    function incrementSequence(uint256 _rollupChainId) internal returns (uint256) {
-        return ++sequences[_rollupChainId];
+        deployBlockNumber = block.number;
     }
 
     /// @notice Add a sequencer to the permissioned sequencer list.
@@ -129,19 +100,14 @@ contract Zenith is Passage {
     /// @param v - the v component of the Sequencer's ECSDA signature over the block header.
     /// @param r - the r component of the Sequencer's ECSDA signature over the block header.
     /// @param s - the s component of the Sequencer's ECSDA signature over the block header.
-    /// @custom:reverts BadSequence if the sequence number is not the next block for the given rollup chainId.
-    /// @custom:reverts BlockExpired if the confirmBy time has passed.
+    /// @custom:reverts IncorrectHostBlock if the hostBlockNumber does not match the current block.
     /// @custom:reverts BadSignature if the signer is not a permissioned sequencer,
     ///                 OR if the signature provided commits to a different header.
     /// @custom:reverts OneRollupBlockPerHostBlock if attempting to submit a second rollup block within one host block.
     /// @custom:emits BlockSubmitted if the block is successfully submitted.
     function submitBlock(BlockHeader memory header, uint8 v, bytes32 r, bytes32 s, bytes calldata) external {
-        // assert that the sequence number is valid and increment it
-        uint256 _nextSequence = incrementSequence(header.rollupChainId);
-        if (_nextSequence != header.sequence) revert BadSequence(_nextSequence);
-
-        // assert that confirmBy time has not passed
-        if (block.timestamp > header.confirmBy) revert BlockExpired();
+        // assert that the host block number is valid
+        if (block.number != header.hostBlockNumber) revert IncorrectHostBlock();
 
         // derive sequencer from signature over block header
         bytes32 blockCommit = blockCommitment(header);
@@ -156,13 +122,7 @@ contract Zenith is Passage {
 
         // emit event
         emit BlockSubmitted(
-            sequencer,
-            header.rollupChainId,
-            header.sequence,
-            header.confirmBy,
-            header.gasLimit,
-            header.rewardAddress,
-            header.blockDataHash
+            sequencer, header.rollupChainId, header.gasLimit, header.rewardAddress, header.blockDataHash
         );
     }
 
@@ -174,9 +134,8 @@ contract Zenith is Passage {
             "init4.sequencer.v0",
             block.chainid,
             header.rollupChainId,
-            header.sequence,
+            header.hostBlockNumber,
             header.gasLimit,
-            header.confirmBy,
             header.rewardAddress,
             header.blockDataHash
         );

@@ -18,8 +18,6 @@ contract ZenithTest is Test {
     event BlockSubmitted(
         address indexed sequencer,
         uint256 indexed rollupChainId,
-        uint256 indexed sequence,
-        uint256 confirmBy,
         uint256 gasLimit,
         address rewardAddress,
         bytes32 blockDataHash
@@ -31,8 +29,7 @@ contract ZenithTest is Test {
 
         // set default block values
         header.rollupChainId = block.chainid + 1;
-        header.sequence = 1; // first block has index 1
-        header.confirmBy = block.timestamp + 10 minutes;
+        header.hostBlockNumber = block.number;
         header.gasLimit = 30_000_000;
         header.rewardAddress = address(this);
         header.blockDataHash = keccak256(blockData);
@@ -41,29 +38,16 @@ contract ZenithTest is Test {
         commit = target.blockCommitment(header);
     }
 
-    // cannot submit block with incorrect sequence number
-    function test_badSequence() public {
-        // change to incorrect sequence number
-        header.sequence = 100;
+    // cannot submit block with incorrect host block number
+    function test_incorrectHostBlock() public {
+        // change to incorrect host block number
+        header.hostBlockNumber = 100;
         commit = target.blockCommitment(header);
 
         // sign block commitmenet with sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
-        vm.expectRevert(abi.encodeWithSelector(Zenith.BadSequence.selector, 1));
-        target.submitBlock(header, v, r, s, blockData);
-    }
-
-    // cannot submit block with expired confirmBy time
-    function test_blockExpired() public {
-        // change to expired confirmBy time
-        header.confirmBy = block.timestamp - 1;
-        commit = target.blockCommitment(header);
-
-        // sign block commitmenet with sequencer key
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
-
-        vm.expectRevert(abi.encodeWithSelector(Zenith.BlockExpired.selector));
+        vm.expectRevert(abi.encodeWithSelector(Zenith.IncorrectHostBlock.selector));
         target.submitBlock(header, v, r, s, blockData);
     }
 
@@ -75,18 +59,9 @@ contract ZenithTest is Test {
         // should emit BlockSubmitted event
         vm.expectEmit();
         emit BlockSubmitted(
-            vm.addr(sequencerKey),
-            header.rollupChainId,
-            header.sequence,
-            header.confirmBy,
-            header.gasLimit,
-            header.rewardAddress,
-            header.blockDataHash
+            vm.addr(sequencerKey), header.rollupChainId, header.gasLimit, header.rewardAddress, header.blockDataHash
         );
         target.submitBlock(header, v, r, s, blockData);
-
-        // should increment sequence number
-        assertEq(target.nextSequence(header.rollupChainId), header.sequence + 1);
     }
 
     // cannot submit block with invalid sequencer signer from non-permissioned key
@@ -104,7 +79,7 @@ contract ZenithTest is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
         // change header data from what was signed by sequencer
-        header.confirmBy = block.timestamp + 15 minutes;
+        header.rewardAddress = address(0);
         bytes32 newCommit = target.blockCommitment(header);
         address derivedSigner = ecrecover(newCommit, v, r, s);
 
@@ -120,23 +95,12 @@ contract ZenithTest is Test {
         // should emit BlockSubmitted event
         vm.expectEmit();
         emit BlockSubmitted(
-            vm.addr(sequencerKey),
-            header.rollupChainId,
-            header.sequence,
-            header.confirmBy,
-            header.gasLimit,
-            header.rewardAddress,
-            header.blockDataHash
+            vm.addr(sequencerKey), header.rollupChainId, header.gasLimit, header.rewardAddress, header.blockDataHash
         );
         target.submitBlock(header, v, r, s, blockData);
 
-        // incerement the header sequence
-        header.sequence += 1;
-        commit = target.blockCommitment(header);
-        (v, r, s) = vm.sign(sequencerKey, commit);
-
         // should revert with OneRollupBlockPerHostBlock
-        // (NOTE: this test works because forge does not increment block.number when it mines a transaction)
+        // (NOTE: this test works without changing the Header because forge does not increment block.number when it mines a transaction)
         vm.expectRevert(abi.encodeWithSelector(Zenith.OneRollupBlockPerHostBlock.selector));
         target.submitBlock(header, v, r, s, blockData);
     }
