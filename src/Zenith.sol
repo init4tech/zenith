@@ -106,7 +106,7 @@ contract Zenith is Passage {
     /// @custom:reverts OneRollupBlockPerHostBlock if attempting to submit a second rollup block within one host block.
     /// @custom:emits BlockSubmitted if the block is successfully submitted.
     function submitBlock(BlockHeader memory header, uint8 v, bytes32 r, bytes32 s, bytes calldata) external {
-        // assert that the host block number is valid
+        // assert that the host block number matches the current block
         if (block.number != header.hostBlockNumber) revert IncorrectHostBlock();
 
         // derive sequencer from signature over block header
