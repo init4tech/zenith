@@ -7,13 +7,15 @@ import {HostOrders, RollupOrders} from "../src/Orders.sol";
 
 contract ZenithScript is Script {
     // deploy:
-    // forge script ZenithScript --sig "deploy(uint256,address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $SEQUENCER_ADMIN_ADDRESS
-    function deploy(uint256 defaultRollupChainId, address withdrawalAdmin, address sequencerAdmin)
-        public
-        returns (Zenith z, HostOrders m)
-    {
+    // forge script ZenithScript --sig "deploy(uint256,address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $SEQUENCER_ADMIN_ADDRESS
+    function deploy(
+        uint256 defaultRollupChainId,
+        address withdrawalAdmin,
+        address[] memory initialEnterTokens,
+        address sequencerAdmin
+    ) public returns (Zenith z, HostOrders m) {
         vm.startBroadcast();
-        z = new Zenith(defaultRollupChainId, withdrawalAdmin, sequencerAdmin);
+        z = new Zenith(defaultRollupChainId, withdrawalAdmin, initialEnterTokens, sequencerAdmin);
         m = new HostOrders();
     }
 

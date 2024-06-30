@@ -52,9 +52,12 @@ contract Passage {
 
     /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
     ///                                when entering the rollup via fallback() or receive() fns.
-    constructor(uint256 _defaultRollupChainId, address _tokenAdmin) {
+    constructor(uint256 _defaultRollupChainId, address _tokenAdmin, address[] memory initialEnterTokens) {
         defaultRollupChainId = _defaultRollupChainId;
         tokenAdmin = _tokenAdmin;
+        for (uint256 i; i < initialEnterTokens.length; i++) {
+            _configureEnter(initialEnterTokens[i], true);
+        }
     }
 
     /// @notice Allows native Ether to enter the rollup by being sent directly to the contract.
@@ -149,10 +152,7 @@ contract Passage {
     /// @notice Enable/Disable a given ERC20 token to enter the rollup.
     function configureEnter(address token, bool _canEnter) external {
         if (msg.sender != tokenAdmin) revert OnlyTokenAdmin();
-        if (canEnter[token] != _canEnter) {
-            canEnter[token] = _canEnter;
-            emit EnterConfigured(token, _canEnter);
-        }
+        if (canEnter[token] != _canEnter) _configureEnter(token, _canEnter);
     }
 
     /// @notice Allows the admin to withdraw ETH or ERC20 tokens from the contract.
@@ -165,5 +165,11 @@ contract Passage {
             IERC20(token).transfer(recipient, amount);
         }
         emit Withdrawal(token, recipient, amount);
+    }
+
+    /// @notice Helper to configure ERC20 enters on deploy & via admin function
+    function _configureEnter(address token, bool _canEnter) internal {
+        canEnter[token] = _canEnter;
+        emit EnterConfigured(token, _canEnter);
     }
 }

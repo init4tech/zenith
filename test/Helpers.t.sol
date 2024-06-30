@@ -9,8 +9,12 @@ contract HelpersTest is Test {
 
     function setUp() public {
         vm.createSelectFork("https://rpc.holesky.ethpandaops.io");
+        address[] memory initialEnterTokens;
         target = new Zenith(
-            block.chainid + 1, 0x11Aa4EBFbf7a481617c719a2Df028c9DA1a219aa, 0x29403F107781ea45Bf93710abf8df13F67f2008f
+            block.chainid + 1,
+            0x11Aa4EBFbf7a481617c719a2Df028c9DA1a219aa,
+            initialEnterTokens,
+            0x29403F107781ea45Bf93710abf8df13F67f2008f
         );
     }
 
