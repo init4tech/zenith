@@ -10,15 +10,28 @@ contract Passage {
     uint256 public immutable defaultRollupChainId;
 
     /// @notice The address that is allowed to withdraw funds from the contract.
-    address public immutable withdrawalAdmin;
+    address public immutable tokenAdmin;
 
-    /// @notice Thrown when attempting to withdraw funds if not withdrawal admin.
-    error OnlyWithdrawalAdmin();
+    /// @notice tokenAddress => whether new EnterToken events are enabled for that token
+    mapping(address => bool) public canEnter;
+
+    /// @notice Thrown when attempting to call admin functions if not the token admin.
+    error OnlyTokenAdmin();
 
     /// @notice Emitted when Ether enters the rollup.
+    /// @param rollupChainId - The chainId of the destination rollup.
     /// @param rollupRecipient - The recipient of Ether on the rollup.
     /// @param amount - The amount of Ether entering the rollup.
     event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
+
+    /// @notice Emitted when ERC20 tokens enter the rollup.
+    /// @param rollupChainId - The chainId of the destination rollup.
+    /// @param rollupRecipient - The recipient of tokens on the rollup.
+    /// @param token - The host chain address of the token entering the rollup.
+    /// @param amount - The amount of tokens entering the rollup.
+    event EnterToken(
+        uint256 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
+    );
 
     /// @notice Emitted to send a special transaction to the rollup.
     event Transact(
@@ -34,11 +47,14 @@ contract Passage {
     /// @notice Emitted when the admin withdraws tokens from the contract.
     event Withdrawal(address indexed token, address indexed recipient, uint256 amount);
 
+    /// @notice Emitted when the admin enables/disables ERC20 Enters for a given token.
+    event EnterConfigured(address indexed token, bool indexed canEnter);
+
     /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
     ///                                when entering the rollup via fallback() or receive() fns.
-    constructor(uint256 _defaultRollupChainId, address _withdrawalAdmin) {
+    constructor(uint256 _defaultRollupChainId, address _tokenAdmin) {
         defaultRollupChainId = _defaultRollupChainId;
-        withdrawalAdmin = _withdrawalAdmin;
+        tokenAdmin = _tokenAdmin;
     }
 
     /// @notice Allows native Ether to enter the rollup by being sent directly to the contract.
@@ -64,6 +80,22 @@ contract Passage {
     /// @dev see `enter` for docs.
     function enter(address rollupRecipient) external payable {
         enter(defaultRollupChainId, rollupRecipient);
+    }
+
+    /// @notice Allows ERC20 tokens to enter the rollup.
+    /// @param rollupChainId - The rollup chain to enter.
+    /// @param rollupRecipient - The recipient of tokens on the rollup.
+    /// @param token - The host chain address of the token entering the rollup.
+    /// @param amount - The amount of tokens entering the rollup.
+    function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        emit EnterToken(rollupChainId, rollupRecipient, token, amount);
+    }
+
+    /// @notice Allows ERC20 tokens to enter the default rollup.
+    /// @dev see `enterToken` for docs.
+    function enterToken(address rollupRecipient, address token, uint256 amount) external {
+        enterToken(defaultRollupChainId, rollupRecipient, token, amount);
     }
 
     /// @notice Allows a special transaction to be sent to the rollup with sender == L1 msg.sender.
@@ -114,10 +146,19 @@ contract Passage {
         emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
+    /// @notice Enable/Disable a given ERC20 token to enter the rollup.
+    function configureEnter(address token, bool _canEnter) external {
+        if (msg.sender != tokenAdmin) revert OnlyTokenAdmin();
+        if (canEnter[token] != _canEnter) {
+            canEnter[token] = _canEnter;
+            emit EnterConfigured(token, _canEnter);
+        }
+    }
+
     /// @notice Allows the admin to withdraw ETH or ERC20 tokens from the contract.
     /// @dev Only the admin can call this function.
     function withdraw(address token, address recipient, uint256 amount) external {
-        if (msg.sender != withdrawalAdmin) revert OnlyWithdrawalAdmin();
+        if (msg.sender != tokenAdmin) revert OnlyTokenAdmin();
         if (token == address(0)) {
             payable(recipient).transfer(amount);
         } else {
