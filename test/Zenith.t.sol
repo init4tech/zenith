@@ -47,7 +47,7 @@ contract ZenithTest is Test {
         // sign block commitmenet with sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
-        vm.expectRevert(abi.encodeWithSelector(Zenith.IncorrectHostBlock.selector));
+        vm.expectRevert(Zenith.IncorrectHostBlock.selector);
         target.submitBlock(header, v, r, s, blockData);
     }
 
@@ -101,7 +101,7 @@ contract ZenithTest is Test {
 
         // should revert with OneRollupBlockPerHostBlock
         // (NOTE: this test works without changing the Header because forge does not increment block.number when it mines a transaction)
-        vm.expectRevert(abi.encodeWithSelector(Zenith.OneRollupBlockPerHostBlock.selector));
+        vm.expectRevert(Zenith.OneRollupBlockPerHostBlock.selector);
         target.submitBlock(header, v, r, s, blockData);
     }
 }
