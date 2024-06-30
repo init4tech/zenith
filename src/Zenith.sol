@@ -6,8 +6,9 @@ import {Passage} from "./Passage.sol";
 contract Zenith is Passage {
     /// @notice The address that is allowed to set/remove sequencers.
     address public immutable sequencerAdmin;
+
     /// @notice The block number at which the Zenith contract was deployed.
-    uint256 public immutable deployBlockNumber;
+    uint256 public deployBlockNumber;
 
     /// @notice Block header information for the rollup block, signed by the sequencer.
     /// @param rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
