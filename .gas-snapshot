@@ -1,5 +1,5 @@
 ZenithTest:test_badSignature() (gas: 37377)
-ZenithTest:test_incorrectHostBlock() (gas: 35565)
+ZenithTest:test_incorrectHostBlock() (gas: 35200)
 ZenithTest:test_notSequencer() (gas: 34145)
-ZenithTest:test_onePerBlock() (gas: 68700)
-ZenithTest:test_submitBlock() (gas: 61119)
+ZenithTest:test_onePerBlock() (gas: 68365)
+ZenithTest:test_submitBlock() (gas: 61143)
