@@ -12,13 +12,13 @@ contract Passage {
     /// @notice The address that is allowed to withdraw funds from the contract.
     address public immutable tokenAdmin;
 
-    /// @notice tokenAddress => whether new EnterToken events are enabled for that token
+    /// @notice tokenAddress => whether new EnterToken events are currently allowed for that token.
     mapping(address => bool) public canEnter;
 
     /// @notice Thrown when attempting to call admin functions if not the token admin.
     error OnlyTokenAdmin();
 
-    /// @notice Thrown when attempting to enter the rollup with an ERC20 token that is not currently enabled.
+    /// @notice Thrown when attempting to enter the rollup with an ERC20 token that is not currently allowed.
     error DisallowedEnter(address token);
 
     /// @notice Emitted when Ether enters the rollup.
@@ -50,7 +50,7 @@ contract Passage {
     /// @notice Emitted when the admin withdraws tokens from the contract.
     event Withdrawal(address indexed token, address indexed recipient, uint256 amount);
 
-    /// @notice Emitted when the admin enables/disables ERC20 Enters for a given token.
+    /// @notice Emitted when the admin allow/disallow ERC20 Enters for a given token.
     event EnterConfigured(address indexed token, bool indexed canEnter);
 
     /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
@@ -153,7 +153,7 @@ contract Passage {
         emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
-    /// @notice Enable/Disable a given ERC20 token to enter the rollup.
+    /// @notice Alow/Disallow a given ERC20 token to enter the rollup.
     function configureEnter(address token, bool _canEnter) external {
         if (msg.sender != tokenAdmin) revert OnlyTokenAdmin();
         if (canEnter[token] != _canEnter) _configureEnter(token, _canEnter);
