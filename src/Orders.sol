@@ -3,6 +3,29 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
+/// @notice Tokens sent by the swapper as inputs to the order
+/// @dev From ERC-7683
+struct Input {
+    /// @dev The address of the ERC20 token on the origin chain
+    address token;
+    /// @dev The amount of the token to be sent
+    uint256 amount;
+}
+
+/// @notice Tokens that must be receive for a valid order fulfillment
+/// @dev From ERC-7683
+struct Output {
+    /// @dev The address of the ERC20 token on the destination chain
+    /// @dev address(0) used as a sentinel for the native token
+    address token;
+    /// @dev The amount of the token to be sent
+    uint256 amount;
+    /// @dev The address to receive the output tokens
+    address recipient;
+    /// @dev The destination chain for this output
+    uint32 chainId;
+}
+
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
 abstract contract OrderDestination {
     /// @notice Emitted when an Order's Output is sent to the recipient.
@@ -30,33 +53,27 @@ abstract contract OrderDestination {
         }
         emit OutputFilled(originChainId, recipient, token, amount);
     }
+
+    /// @notice Send multiple Output(s) of Order(s).
+    /// @custom:emits OutputFilled for each output
+    /// @param outputs - The array of Outputs to fill.
+    function fill(uint256[] memory originChainIds, Output[] memory outputs) external payable {
+        uint256 value = msg.value;
+        for (uint256 i; i < outputs.length; i++) {
+            if (outputs[i].token == address(0)) {
+                // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
+                value -= outputs[i].amount;
+                payable(outputs[i].recipient).transfer(outputs[i].amount);
+            } else {
+                IERC20(outputs[i].token).transferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
+            }
+            emit OutputFilled(originChainIds[i], outputs[i].recipient, outputs[i].token, outputs[i].amount);
+        }
+    }
 }
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
 abstract contract OrderOrigin {
-    /// @notice Tokens sent by the swapper as inputs to the order
-    /// @dev From ERC-7683
-    struct Input {
-        /// @dev The address of the ERC20 token on the origin chain
-        address token;
-        /// @dev The amount of the token to be sent
-        uint256 amount;
-    }
-
-    /// @notice Tokens that must be receive for a valid order fulfillment
-    /// @dev From ERC-7683
-    struct Output {
-        /// @dev The address of the ERC20 token on the destination chain
-        /// @dev address(0) used as a sentinel for the native token
-        address token;
-        /// @dev The amount of the token to be sent
-        uint256 amount;
-        /// @dev The address to receive the output tokens
-        address recipient;
-        /// @dev The destination chain for this output
-        uint32 chainId;
-    }
-
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
 
