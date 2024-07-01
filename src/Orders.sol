@@ -58,6 +58,9 @@ abstract contract OrderOrigin {
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
 
+    /// @notice Thrown when trying to call `sweep` if not the Builder of the block.
+    error OnlyBuilder();
+
     /// @notice Emitted when an Order is submitted for fulfillment.
     event Order(uint256 deadline, Input[] inputs, Output[] outputs);
 
@@ -106,10 +109,14 @@ abstract contract OrderOrigin {
     /// @notice Transfer the entire balance of ERC20 tokens to the recipient.
     /// @dev Called by the Builder within the same block as users' `initiate` transactions
     ///      to claim the `inputs`.
-    /// @dev Builder MUST ensure that no other account calls `sweep` before them.
+    /// @dev Builder MUST call `sweep` atomically with `fill` (claim Inputs atomically with sending Outputs).
     /// @param recipient - The address to receive the tokens.
     /// @param token - The token to transfer.
+    /// @custom:emits Sweep
+    /// @custom:reverts OnlyBuilder if called by non-block builder
     function sweep(address recipient, address token) public {
+        if (msg.sender != block.coinbase) revert OnlyBuilder();
+        // send ETH or tokens
         uint256 balance;
         if (token == address(0)) {
             balance = address(this).balance;
