@@ -79,7 +79,7 @@ abstract contract OrderOrigin {
     /// @param outputs - The token amounts that must be received on their target chain(s) in order for the Order to be executed.
     /// @custom:reverts OrderExpired if the deadline has passed.
     /// @custom:emits Order if the transaction mines.
-    function inititate(uint256 deadline, Input[] calldata inputs, Output[] calldata outputs) external payable {
+    function initiate(uint256 deadline, Input[] calldata inputs, Output[] calldata outputs) external payable {
         // check that the deadline hasn't passed
         if (block.timestamp >= deadline) revert OrderExpired();
 
