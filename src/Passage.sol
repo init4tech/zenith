@@ -95,6 +95,7 @@ contract Passage {
     /// @param amount - The amount of tokens entering the rollup.
     function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
         if (!canEnter[token]) revert DisallowedEnter(token);
+        if (amount == 0) return;
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         emit EnterToken(rollupChainId, rollupRecipient, token, amount);
     }

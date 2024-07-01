@@ -1,0 +1,198 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.24;
+
+import {Test, console2} from "forge-std/Test.sol";
+import {Passage} from "../src/Passage.sol";
+import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+
+contract TestERC20 is ERC20 {
+    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
+
+    function mint(address recipient, uint256 amount) external {
+        _mint(recipient, amount);
+    }
+}
+
+contract ZenithTest is Test {
+    Passage public target;
+    address token;
+    address newToken;
+    uint256 chainId = 3;
+    address recipient = address(0x123);
+    uint256 amount = 200;
+
+    address to = address(0x01);
+    bytes data = abi.encodeWithSelector(ERC20.transfer.selector, recipient, amount);
+    uint256 value = 100;
+    uint256 gas = 10_000_000;
+    uint256 maxFeePerGas = 50;
+
+    uint256 tokenAdminKey = 123;
+
+    event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
+
+    event EnterToken(
+        uint256 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
+    );
+
+    event Transact(
+        uint256 indexed rollupChainId,
+        address indexed sender,
+        address indexed to,
+        bytes data,
+        uint256 value,
+        uint256 gas,
+        uint256 maxFeePerGas
+    );
+
+    event Withdrawal(address indexed token, address indexed recipient, uint256 amount);
+
+    event EnterConfigured(address indexed token, bool indexed canEnter);
+
+    function setUp() public {
+        // deploy token one, configured at deploy time
+        token = address(new TestERC20("hi", "HI"));
+        TestERC20(token).mint(address(this), amount * 10000);
+
+        // deploy target
+        address[] memory initialEnterTokens = new address[](1);
+        initialEnterTokens[0] = token;
+        target = new Passage(block.chainid + 1, address(this), initialEnterTokens);
+        TestERC20(token).approve(address(target), amount * 10000);
+
+        // deploy token two, don't configure
+        newToken = address(new TestERC20("bye", "BYE"));
+        TestERC20(newToken).mint(address(this), amount * 10000);
+        TestERC20(newToken).approve(address(target), amount * 10000);
+    }
+
+    function test_setUp() public {
+        assertEq(target.defaultRollupChainId(), block.chainid + 1);
+        assertEq(target.tokenAdmin(), address(this));
+        assertTrue(target.canEnter(token));
+        assertFalse(target.canEnter(newToken));
+    }
+
+    function test_onlyTokenAdmin() public {
+        vm.startPrank(address(0x01));
+        vm.expectRevert(Passage.OnlyTokenAdmin.selector);
+        target.withdraw(token, recipient, amount);
+
+        vm.expectRevert(Passage.OnlyTokenAdmin.selector);
+        target.configureEnter(token, true);
+    }
+
+    function test_disallowedEnter() public {
+        vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
+        target.enterToken(recipient, newToken, amount);
+    }
+
+    function test_configureEnter() public {
+        // enter not allowed by default
+        assertFalse(target.canEnter(newToken));
+        vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
+        target.enterToken(chainId, recipient, newToken, amount);
+
+        // allow enter
+        vm.expectEmit();
+        emit EnterConfigured(newToken, true);
+        target.configureEnter(newToken, true);
+
+        // enter is allowed
+        assertTrue(target.canEnter(newToken));
+        vm.expectEmit();
+        emit EnterToken(chainId, recipient, newToken, amount);
+        target.enterToken(chainId, recipient, newToken, amount);
+
+        // disallow enter
+        vm.expectEmit();
+        emit EnterConfigured(newToken, false);
+        target.configureEnter(newToken, false);
+
+        // enter not allowed again
+        assertFalse(target.canEnter(newToken));
+        vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
+        target.enterToken(chainId, recipient, newToken, amount);
+    }
+
+    function test_receive() public {
+        vm.expectEmit();
+        emit Enter(target.defaultRollupChainId(), address(this), amount);
+        address(target).call{value: amount}("");
+    }
+
+    function test_fallback() public {
+        vm.expectEmit();
+        emit Enter(target.defaultRollupChainId(), address(this), amount);
+        address(target).call{value: amount}("0xabcd");
+    }
+
+    function test_enter() public {
+        vm.expectEmit();
+        emit Enter(chainId, recipient, amount);
+        target.enter{value: amount}(chainId, recipient);
+    }
+
+    function test_enter_defaultChain() public {
+        vm.expectEmit();
+        emit Enter(target.defaultRollupChainId(), recipient, amount);
+        target.enter{value: amount}(recipient);
+    }
+
+    function test_enterToken() public {
+        vm.expectEmit();
+        emit EnterToken(chainId, recipient, token, amount);
+        vm.expectCall(
+            token, abi.encodeWithSelector(ERC20.transferFrom.selector, address(this), address(target), amount)
+        );
+        target.enterToken(chainId, recipient, token, amount);
+    }
+
+    function test_enterToken_defaultChain() public {
+        vm.expectEmit();
+        emit EnterToken(target.defaultRollupChainId(), recipient, token, amount);
+        vm.expectCall(
+            token, abi.encodeWithSelector(ERC20.transferFrom.selector, address(this), address(target), amount)
+        );
+        target.enterToken(recipient, token, amount);
+    }
+
+    function test_transact() public {
+        vm.expectEmit();
+        emit Transact(chainId, address(this), to, data, value, gas, maxFeePerGas);
+        target.transact(chainId, to, data, value, gas, maxFeePerGas);
+
+        vm.expectEmit();
+        emit Enter(chainId, address(this), amount);
+        target.transact{value: amount}(chainId, to, data, value, gas, maxFeePerGas);
+    }
+
+    function test_transact_defaultChain() public {
+        vm.expectEmit();
+        emit Transact(target.defaultRollupChainId(), address(this), to, data, value, gas, maxFeePerGas);
+        target.transact(to, data, value, gas, maxFeePerGas);
+
+        vm.expectEmit();
+        emit Enter(target.defaultRollupChainId(), address(this), amount);
+        target.transact{value: amount}(to, data, value, gas, maxFeePerGas);
+    }
+
+    function test_enterTransact() public {
+        vm.expectEmit();
+        emit Transact(chainId, address(this), to, data, value, gas, maxFeePerGas);
+        target.enterTransact(chainId, recipient, to, data, value, gas, maxFeePerGas);
+
+        vm.expectEmit();
+        emit Enter(chainId, recipient, amount);
+        target.enterTransact{value: amount}(chainId, recipient, to, data, value, gas, maxFeePerGas);
+    }
+
+    function test_withdraw() public {
+        TestERC20(token).mint(address(target), amount);
+
+        vm.expectEmit();
+        emit Withdrawal(token, recipient, amount);
+        vm.expectCall(token, abi.encodeWithSelector(ERC20.transfer.selector, recipient, amount));
+        target.withdraw(token, recipient, amount);
+    }
+}
