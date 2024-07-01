@@ -18,6 +18,9 @@ contract Passage {
     /// @notice Thrown when attempting to call admin functions if not the token admin.
     error OnlyTokenAdmin();
 
+    /// @notice Thrown when attempting to enter the rollup with an ERC20 token that is not currently enabled.
+    error DisallowedToken(address token);
+
     /// @notice Emitted when Ether enters the rollup.
     /// @param rollupChainId - The chainId of the destination rollup.
     /// @param rollupRecipient - The recipient of Ether on the rollup.
@@ -91,6 +94,7 @@ contract Passage {
     /// @param token - The host chain address of the token entering the rollup.
     /// @param amount - The amount of tokens entering the rollup.
     function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
+        if (!canEnter[token]) revert DisallowedToken(token);
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         emit EnterToken(rollupChainId, rollupRecipient, token, amount);
     }
