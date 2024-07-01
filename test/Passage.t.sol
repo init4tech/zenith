@@ -21,7 +21,6 @@ contract ZenithTest is Test {
     address recipient = address(0x123);
     uint256 amount = 200;
 
-    // TODO: do we need to do checks on these vals?
     address to = address(0x01);
     bytes data = abi.encodeWithSelector(ERC20.transfer.selector, recipient, amount);
     uint256 value = 100;
