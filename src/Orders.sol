@@ -79,7 +79,7 @@ abstract contract OrderOrigin {
     /// @param outputs - The token amounts that must be received on their target chain(s) in order for the Order to be executed.
     /// @custom:reverts OrderExpired if the deadline has passed.
     /// @custom:emits Order if the transaction mines.
-    function initiate(uint256 deadline, Input[] calldata inputs, Output[] calldata outputs) external payable {
+    function initiate(uint256 deadline, Input[] memory inputs, Output[] memory outputs) external payable {
         // check that the deadline hasn't passed
         if (block.timestamp >= deadline) revert OrderExpired();
 
@@ -91,7 +91,7 @@ abstract contract OrderOrigin {
     }
 
     /// @notice Transfer the Order inputs to this contract, where they can be collected by the Order filler.
-    function _transferInputs(Input[] calldata inputs) internal {
+    function _transferInputs(Input[] memory inputs) internal {
         uint256 value = msg.value;
         for (uint256 i; i < inputs.length; i++) {
             if (inputs[i].token == address(0)) {
