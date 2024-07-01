@@ -13,7 +13,7 @@ contract TestERC20 is ERC20 {
     }
 }
 
-contract ZenithTest is Test {
+contract PassageTest is Test {
     Passage public target;
     address token;
     address newToken;
