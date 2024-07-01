@@ -7,26 +7,28 @@ import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 abstract contract OrderDestination {
     /// @notice Emitted when an Order's Output is sent to the recipient.
     /// @dev There may be multiple Outputs per Order.
+    /// @param originChainId - The chainId on which the Order was initiated.
     /// @param recipient - The recipient of the token.
     /// @param token - The address of the token transferred to the recipient. address(0) corresponds to native Ether.
     /// @param amount - The amount of the token transferred to the recipient.
-    event OutputFilled(address indexed recipient, address indexed token, uint256 amount);
+    event OutputFilled(uint256 indexed originChainId, address indexed recipient, address indexed token, uint256 amount);
 
     /// @notice Send the Output(s) of an Order to fulfill it.
     ///         The user calls `initiate` on a rollup; the Builder calls `fill` on the target chain for each Output.
     /// @custom:emits OutputFilled
+    /// @param originChainId - The chainId on which the Order was initiated.
     /// @param recipient - The recipient of the token.
     /// @param token - The address of the token to be transferred to the recipient.
     ///                address(0) corresponds to native Ether.
     /// @param amount - The amount of the token to be transferred to the recipient.
-    function fill(address recipient, address token, uint256 amount) external payable {
+    function fill(uint256 originChainId, address recipient, address token, uint256 amount) external payable {
         if (token == address(0)) {
             require(amount == msg.value);
             payable(recipient).transfer(msg.value);
         } else {
             IERC20(token).transferFrom(msg.sender, recipient, amount);
         }
-        emit OutputFilled(recipient, token, amount);
+        emit OutputFilled(originChainId, recipient, token, amount);
     }
 }
 
