@@ -66,9 +66,12 @@ contract Zenith is Passage {
     /// @notice Emitted when a sequencer is added or removed.
     event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
-    constructor(uint256 _defaultRollupChainId, address _withdrawalAdmin, address _sequencerAdmin)
-        Passage(_defaultRollupChainId, _withdrawalAdmin)
-    {
+    constructor(
+        uint256 _defaultRollupChainId,
+        address _withdrawalAdmin,
+        address[] memory initialEnterTokens,
+        address _sequencerAdmin
+    ) Passage(_defaultRollupChainId, _withdrawalAdmin, initialEnterTokens) {
         sequencerAdmin = _sequencerAdmin;
         deployBlockNumber = block.number;
     }
