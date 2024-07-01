@@ -51,15 +51,15 @@ contract ZenithTest is Test {
     event EnterConfigured(address indexed token, bool indexed canEnter);
 
     function setUp() public {
-        address[] memory initialEnterTokens;
-        target = new Passage(block.chainid + 1, address(this), initialEnterTokens);
-
-        // deploy token one, to be configured at deploy time
+        // deploy token one, configured at deploy time
         token = address(new TestERC20("hi", "HI"));
         TestERC20(token).mint(address(this), amount * 10000);
+
+        // deploy target
+        address[] memory initialEnterTokens = new address[](1);
+        initialEnterTokens[0] = token;
+        target = new Passage(block.chainid + 1, address(this), initialEnterTokens);
         TestERC20(token).approve(address(target), amount * 10000);
-        // TODO: change to intializer setup
-        target.configureEnter(token, true);
 
         // deploy token two, don't configure
         newToken = address(new TestERC20("bye", "BYE"));
