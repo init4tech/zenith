@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 import {Passage} from "./Passage.sol";
 
 contract Zenith {
+    /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
+    uint256 public immutable defaultRollupChainId;
+
     /// @notice The address that is allowed to set/remove sequencers.
     address public immutable sequencerAdmin;
 
@@ -63,10 +66,22 @@ contract Zenith {
         bytes32 blockDataHash
     );
 
+    /// @notice Emitted to send a special transaction to the rollup.
+    event Transact(
+        uint256 indexed rollupChainId,
+        address indexed sender,
+        address indexed to,
+        bytes data,
+        uint256 value,
+        uint256 gas,
+        uint256 maxFeePerGas
+    );
+
     /// @notice Emitted when a sequencer is added or removed.
     event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
-    constructor(address _sequencerAdmin) {
+    constructor(uint256 _defaultRollupChainId, address _sequencerAdmin) {
+        defaultRollupChainId = _defaultRollupChainId;
         sequencerAdmin = _sequencerAdmin;
         deployBlockNumber = block.number;
     }
@@ -123,6 +138,32 @@ contract Zenith {
         emit BlockSubmitted(
             sequencer, header.rollupChainId, header.gasLimit, header.rewardAddress, header.blockDataHash
         );
+    }
+
+    /// @notice Send a special transaction to be sent to the rollup with sender == L1 msg.sender.
+    /// @dev Transact is processed after normal rollup block execution.
+    /// @param rollupChainId - The rollup chain to send the transaction to.
+    /// @param to - The address to call on the rollup.
+    /// @param data - The data to send to the rollup.
+    /// @param value - The amount of Ether to send on the rollup.
+    /// @param gas - The gas limit for the transaction.
+    /// @param maxFeePerGas - The maximum fee per gas for the transaction (per EIP-1559).
+    /// @custom:emits Transact indicating the transaction to mine on the rollup.
+    function transact(
+        uint256 rollupChainId,
+        address to,
+        bytes calldata data,
+        uint256 value,
+        uint256 gas,
+        uint256 maxFeePerGas
+    ) public {
+        // emit Transact event
+        emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
+    }
+
+    /// @dev See `transact` for docs.
+    function transact(address to, bytes calldata data, uint256 value, uint256 gas, uint256 maxFeePerGas) external {
+        transact(defaultRollupChainId, to, data, value, gas, maxFeePerGas);
     }
 
     /// @notice Construct hash of block details that the sequencer signs.

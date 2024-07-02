@@ -36,17 +36,6 @@ contract Passage {
         uint256 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
     );
 
-    /// @notice Emitted to send a special transaction to the rollup.
-    event Transact(
-        uint256 indexed rollupChainId,
-        address indexed sender,
-        address indexed to,
-        bytes data,
-        uint256 value,
-        uint256 gas,
-        uint256 maxFeePerGas
-    );
-
     /// @notice Emitted when the admin withdraws tokens from the contract.
     event Withdrawal(address indexed token, address indexed recipient, uint256 amount);
 
@@ -104,54 +93,6 @@ contract Passage {
     /// @dev see `enterToken` for docs.
     function enterToken(address rollupRecipient, address token, uint256 amount) external {
         enterToken(defaultRollupChainId, rollupRecipient, token, amount);
-    }
-
-    /// @notice Allows a special transaction to be sent to the rollup with sender == L1 msg.sender.
-    /// @dev Transaction is processed after normal rollup block execution.
-    /// @dev See `enterTransact` for docs.
-    function transact(
-        uint256 rollupChainId,
-        address to,
-        bytes calldata data,
-        uint256 value,
-        uint256 gas,
-        uint256 maxFeePerGas
-    ) public payable {
-        enterTransact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
-    }
-
-    /// @dev See `transact` for docs.
-    function transact(address to, bytes calldata data, uint256 value, uint256 gas, uint256 maxFeePerGas)
-        external
-        payable
-    {
-        enterTransact(defaultRollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
-    }
-
-    /// @notice Send Ether on the rollup, send a special transaction to be sent to the rollup with sender == L1 msg.sender.
-    /// @dev Enter and Transact are processed after normal rollup block execution.
-    /// @dev See `enter` for Enter docs.
-    /// @param rollupChainId - The rollup chain to send the transaction to.
-    /// @param etherRecipient - The recipient of the ether.
-    /// @param to - The address to call on the rollup.
-    /// @param data - The data to send to the rollup.
-    /// @param value - The amount of Ether to send on the rollup.
-    /// @param gas - The gas limit for the transaction.
-    /// @param maxFeePerGas - The maximum fee per gas for the transaction (per EIP-1559).
-    /// @custom:emits Transact indicating the transaction to mine on the rollup.
-    function enterTransact(
-        uint256 rollupChainId,
-        address etherRecipient,
-        address to,
-        bytes calldata data,
-        uint256 value,
-        uint256 gas,
-        uint256 maxFeePerGas
-    ) public payable {
-        // if msg.value is attached, Enter
-        enter(rollupChainId, etherRecipient);
-        // emit Transact event
-        emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
     /// @notice Alow/Disallow a given ERC20 token to enter the rollup.

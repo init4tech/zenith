@@ -16,7 +16,7 @@ contract ZenithScript is Script {
         address sequencerAdmin
     ) public returns (Zenith z, Passage p, HostOrders m) {
         vm.startBroadcast();
-        z = new Zenith(sequencerAdmin);
+        z = new Zenith(defaultRollupChainId, sequencerAdmin);
         p = new Passage(defaultRollupChainId, withdrawalAdmin, initialEnterTokens);
         m = new HostOrders();
     }

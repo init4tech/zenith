@@ -15,6 +15,13 @@ contract ZenithTest is Test {
     uint256 sequencerKey = 123;
     uint256 notSequencerKey = 300;
 
+    uint256 chainId = 3;
+    address to = address(0x01);
+    bytes data = abi.encode(0xbeef);
+    uint256 value = 100;
+    uint256 gas = 10_000_000;
+    uint256 maxFeePerGas = 50;
+
     event BlockSubmitted(
         address indexed sequencer,
         uint256 indexed rollupChainId,
@@ -25,8 +32,18 @@ contract ZenithTest is Test {
 
     event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
+    event Transact(
+        uint256 indexed rollupChainId,
+        address indexed sender,
+        address indexed to,
+        bytes data,
+        uint256 value,
+        uint256 gas,
+        uint256 maxFeePerGas
+    );
+
     function setUp() public {
-        target = new Zenith(address(this));
+        target = new Zenith(block.number + 1, address(this));
         target.addSequencer(vm.addr(sequencerKey));
 
         // set default block values
@@ -158,5 +175,17 @@ contract ZenithTest is Test {
 
         vm.expectRevert(Zenith.OnlySequencerAdmin.selector);
         target.removeSequencer(address(0x02));
+    }
+
+    function test_transact() public {
+        vm.expectEmit();
+        emit Transact(chainId, address(this), to, data, value, gas, maxFeePerGas);
+        target.transact(chainId, to, data, value, gas, maxFeePerGas);
+    }
+
+    function test_transact_defaultChain() public {
+        vm.expectEmit();
+        emit Transact(target.defaultRollupChainId(), address(this), to, data, value, gas, maxFeePerGas);
+        target.transact(to, data, value, gas, maxFeePerGas);
     }
 }
