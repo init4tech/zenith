@@ -1,4 +1,3 @@
-OrdersFuzzTest:testFuzz_initiate((address,uint256)[],(address,uint256,address,uint32)[]) (runs: 256, μ: 492290, ~: 496012)
 OrdersTest:test_initiate_ERC20() (gas: 81255)
 OrdersTest:test_initiate_ETH() (gas: 44801)
 OrdersTest:test_initiate_both() (gas: 118573)
