@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Script} from "forge-std/Script.sol";
 import {Zenith} from "../src/Zenith.sol";
+import {Passage} from "../src/Passage.sol";
 import {HostOrders, RollupOrders} from "../src/Orders.sol";
 
 contract ZenithScript is Script {
@@ -13,9 +14,10 @@ contract ZenithScript is Script {
         address withdrawalAdmin,
         address[] memory initialEnterTokens,
         address sequencerAdmin
-    ) public returns (Zenith z, HostOrders m) {
+    ) public returns (Zenith z, Passage p, HostOrders m) {
         vm.startBroadcast();
-        z = new Zenith(defaultRollupChainId, withdrawalAdmin, initialEnterTokens, sequencerAdmin);
+        z = new Zenith(sequencerAdmin);
+        p = new Passage(defaultRollupChainId, withdrawalAdmin, initialEnterTokens);
         m = new HostOrders();
     }
 

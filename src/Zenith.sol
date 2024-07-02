@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {Passage} from "./Passage.sol";
 
-contract Zenith is Passage {
+contract Zenith {
     /// @notice The address that is allowed to set/remove sequencers.
     address public immutable sequencerAdmin;
 
@@ -66,12 +66,7 @@ contract Zenith is Passage {
     /// @notice Emitted when a sequencer is added or removed.
     event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
-    constructor(
-        uint256 _defaultRollupChainId,
-        address _withdrawalAdmin,
-        address[] memory initialEnterTokens,
-        address _sequencerAdmin
-    ) Passage(_defaultRollupChainId, _withdrawalAdmin, initialEnterTokens) {
+    constructor(address _sequencerAdmin) {
         sequencerAdmin = _sequencerAdmin;
         deployBlockNumber = block.number;
     }
