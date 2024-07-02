@@ -3,6 +3,29 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
+/// @notice Tokens sent by the swapper as inputs to the order
+/// @dev From ERC-7683
+struct Input {
+    /// @dev The address of the ERC20 token on the origin chain
+    address token;
+    /// @dev The amount of the token to be sent
+    uint256 amount;
+}
+
+/// @notice Tokens that must be receive for a valid order fulfillment
+/// @dev From ERC-7683
+struct Output {
+    /// @dev The address of the ERC20 token on the destination chain
+    /// @dev address(0) used as a sentinel for the native token
+    address token;
+    /// @dev The amount of the token to be sent
+    uint256 amount;
+    /// @dev The address to receive the output tokens
+    address recipient;
+    /// @dev The destination chain for this output
+    uint32 chainId;
+}
+
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
 abstract contract OrderDestination {
     /// @notice Emitted when an Order's Output is sent to the recipient.
@@ -34,29 +57,6 @@ abstract contract OrderDestination {
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
 abstract contract OrderOrigin {
-    /// @notice Tokens sent by the swapper as inputs to the order
-    /// @dev From ERC-7683
-    struct Input {
-        /// @dev The address of the ERC20 token on the origin chain
-        address token;
-        /// @dev The amount of the token to be sent
-        uint256 amount;
-    }
-
-    /// @notice Tokens that must be receive for a valid order fulfillment
-    /// @dev From ERC-7683
-    struct Output {
-        /// @dev The address of the ERC20 token on the destination chain
-        /// @dev address(0) used as a sentinel for the native token
-        address token;
-        /// @dev The amount of the token to be sent
-        uint256 amount;
-        /// @dev The address to receive the output tokens
-        address recipient;
-        /// @dev The destination chain for this output
-        uint32 chainId;
-    }
-
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
 
@@ -79,14 +79,14 @@ abstract contract OrderOrigin {
     /// @dev The Builder claims the inputs from the contract by submitting `sweep` transactions within the same block.
     /// @dev The Rollup STF MUST NOT apply `initiate` transactions to the rollup state
     ///      UNLESS the outputs are delivered on the target chains within the same block.
-    /// @param deadline - The deadline by which the Order must be fulfilled.
+    /// @param deadline - The deadline at or before which the Order must be fulfilled.
     /// @param inputs - The token amounts offered by the swapper in exchange for the outputs.
     /// @param outputs - The token amounts that must be received on their target chain(s) in order for the Order to be executed.
     /// @custom:reverts OrderExpired if the deadline has passed.
     /// @custom:emits Order if the transaction mines.
     function initiate(uint256 deadline, Input[] memory inputs, Output[] memory outputs) external payable {
         // check that the deadline hasn't passed
-        if (block.timestamp >= deadline) revert OrderExpired();
+        if (block.timestamp > deadline) revert OrderExpired();
 
         // transfer inputs to this contract
         _transferInputs(inputs);
