@@ -201,8 +201,8 @@ contract OrdersFuzzTest is Test {
     }
 
     function testFuzz_initiate(Input[] memory fuzzInputs, Output[] memory fuzzOutputs) public {
-        // can only use vm.assume this number of times
-        vm.assume(fuzzInputs.length < 65536 - 2);
+        // can only use vm.assume 256 * 256 times, and we do 256 fuzz runs
+        vm.assume(fuzzInputs.length < 256);
         // setup the fuzz test by ensuring ETH and ERC20 amounts are available
         uint256 totalETH;
         for (uint256 i; i < fuzzInputs.length; i++) {
