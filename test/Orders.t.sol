@@ -19,7 +19,7 @@ contract OrdersTest is Test {
     uint256 amount = 200;
     uint256 deadline = block.timestamp;
 
-    event OutputFilled(uint256 indexed originChainId, address indexed recipient, address indexed token, uint256 amount);
+    event Filled(Output[] outputs);
 
     event Order(uint256 deadline, Input[] inputs, Output[] outputs);
 
@@ -122,13 +122,13 @@ contract OrdersTest is Test {
         assertEq(address(target).balance, amount * 3);
     }
 
-    function test_initiate_underflowETH() public {
+    function test_underflowETH() public {
         // change first input to ETH
         inputs[0].token = address(0);
         // add second ETH input
         inputs.push(Input(address(0), 1));
 
-        // total ETH inputs should be `amount` + 1; function should underflow only sending `amount`
+        // total ETH inputs should be amount + 1; function should underflow only sending amount
         vm.expectRevert();
         target.initiate{value: amount}(deadline, inputs, outputs);
     }
@@ -140,7 +140,7 @@ contract OrdersTest is Test {
         target.initiate(deadline, inputs, outputs);
     }
 
-    function test_sweep_ETH() public {
+    function test_sweepETH() public {
         // set self as Builder
         vm.coinbase(address(this));
 
@@ -158,7 +158,7 @@ contract OrdersTest is Test {
         assertEq(recipient.balance, amount);
     }
 
-    function test_sweep_ERC20() public {
+    function test_sweepERC20() public {
         // set self as Builder
         vm.coinbase(address(this));
 
@@ -175,5 +175,64 @@ contract OrdersTest is Test {
     function test_onlyBuilder() public {
         vm.expectRevert(OrderOrigin.OnlyBuilder.selector);
         target.sweep(recipient, token);
+    }
+
+    function test_fill_ETH() public {
+        outputs[0].token = address(0);
+
+        vm.expectEmit();
+        emit Filled(outputs);
+        target.fill{value: amount}(outputs);
+
+        // ETH is transferred to recipient
+        assertEq(recipient.balance, amount);
+    }
+
+    function test_fill_ERC20() public {
+        vm.expectEmit();
+        emit Filled(outputs);
+        vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, address(this), recipient, amount));
+        target.fill(outputs);
+    }
+
+    function test_fill_both() public {
+        // add ETH output
+        outputs.push(Output(address(0), amount * 2, recipient, chainId));
+
+        // expect Outputs are filled, ERC20 is transferred
+        vm.expectEmit();
+        emit Filled(outputs);
+        vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, address(this), recipient, amount));
+        target.fill{value: amount * 2}(outputs);
+
+        // ETH is transferred to recipient
+        assertEq(recipient.balance, amount * 2);
+    }
+
+    // fill multiple ETH outputs
+    function test_fill_multiETH() public {
+        // change first output to ETH
+        outputs[0].token = address(0);
+        // add second ETH oputput
+        outputs.push(Output(address(0), amount * 2, recipient, chainId));
+
+        // expect Order event is initiated
+        vm.expectEmit();
+        emit Filled(outputs);
+        target.fill{value: amount * 3}(outputs);
+
+        // ETH is transferred to recipient
+        assertEq(recipient.balance, amount * 3);
+    }
+
+    function test_fill_underflowETH() public {
+        // change first output to ETH
+        outputs[0].token = address(0);
+        // add second ETH output
+        outputs.push(Output(address(0), 1, recipient, chainId));
+
+        // total ETH outputs should be `amount` + 1; function should underflow only sending `amount`
+        vm.expectRevert();
+        target.fill{value: amount}(outputs);
     }
 }
