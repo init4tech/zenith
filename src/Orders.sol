@@ -79,14 +79,14 @@ abstract contract OrderOrigin {
     /// @dev The Builder claims the inputs from the contract by submitting `sweep` transactions within the same block.
     /// @dev The Rollup STF MUST NOT apply `initiate` transactions to the rollup state
     ///      UNLESS the outputs are delivered on the target chains within the same block.
-    /// @param deadline - The deadline by which the Order must be fulfilled.
+    /// @param deadline - The deadline at or before which the Order must be fulfilled.
     /// @param inputs - The token amounts offered by the swapper in exchange for the outputs.
     /// @param outputs - The token amounts that must be received on their target chain(s) in order for the Order to be executed.
     /// @custom:reverts OrderExpired if the deadline has passed.
     /// @custom:emits Order if the transaction mines.
     function initiate(uint256 deadline, Input[] memory inputs, Output[] memory outputs) external payable {
         // check that the deadline hasn't passed
-        if (block.timestamp >= deadline) revert OrderExpired();
+        if (block.timestamp > deadline) revert OrderExpired();
 
         // transfer inputs to this contract
         _transferInputs(inputs);
