@@ -122,13 +122,13 @@ contract OrdersTest is Test {
         assertEq(address(target).balance, amount * 3);
     }
 
-    function test_underflowETH() public {
+    function test_initiate_underflowETH() public {
         // change first input to ETH
         inputs[0].token = address(0);
         // add second ETH input
         inputs.push(Input(address(0), 1));
 
-        // total ETH inputs should be amount + 1; function should underflow only sending amount
+        // total ETH inputs should be `amount` + 1; function should underflow only sending `amount`
         vm.expectRevert();
         target.initiate{value: amount}(deadline, inputs, outputs);
     }
@@ -140,7 +140,7 @@ contract OrdersTest is Test {
         target.initiate(deadline, inputs, outputs);
     }
 
-    function test_sweepETH() public {
+    function test_sweep_ETH() public {
         // set self as Builder
         vm.coinbase(address(this));
 
@@ -158,7 +158,7 @@ contract OrdersTest is Test {
         assertEq(recipient.balance, amount);
     }
 
-    function test_sweepERC20() public {
+    function test_sweep_ERC20() public {
         // set self as Builder
         vm.coinbase(address(this));
 
