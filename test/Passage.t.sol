@@ -3,15 +3,8 @@ pragma solidity ^0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
 import {Passage} from "../src/Passage.sol";
+import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-
-contract TestERC20 is ERC20 {
-    constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}
-
-    function mint(address recipient, uint256 amount) external {
-        _mint(recipient, amount);
-    }
-}
 
 contract PassageTest is Test {
     Passage public target;
