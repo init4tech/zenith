@@ -19,7 +19,7 @@ contract ZenithTest is Test {
     address to = address(0x01);
     bytes data = abi.encode(0xbeef);
     uint256 value = 100;
-    uint256 gas = 10_000_000;
+    uint256 gas = 6_000_000;
     uint256 maxFeePerGas = 50;
 
     event BlockSubmitted(
@@ -43,7 +43,7 @@ contract ZenithTest is Test {
     );
 
     function setUp() public {
-        target = new Zenith(block.number + 1, address(this));
+        target = new Zenith(block.chainid + 1, address(this));
         target.addSequencer(vm.addr(sequencerKey));
 
         // set default block values
@@ -178,14 +178,55 @@ contract ZenithTest is Test {
     }
 
     function test_transact() public {
+        // submit a block to set the prevGasLimit to 30M
+        header.rollupChainId = chainId;
+        commit = target.blockCommitment(header);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
+        target.submitBlock(header, v, r, s, blockData);
+
         vm.expectEmit();
         emit Transact(chainId, address(this), to, data, value, gas, maxFeePerGas);
         target.transact(chainId, to, data, value, gas, maxFeePerGas);
     }
 
     function test_transact_defaultChain() public {
+        // submit a block to set the prevGasLimit to 30M
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
+        target.submitBlock(header, v, r, s, blockData);
+
         vm.expectEmit();
         emit Transact(target.defaultRollupChainId(), address(this), to, data, value, gas, maxFeePerGas);
         target.transact(to, data, value, gas, maxFeePerGas);
+    }
+
+    function test_transact_perTransactGasLimit() public {
+        // submit a block to set the prevGasLimit to 30M
+        header.rollupChainId = chainId;
+        commit = target.blockCommitment(header);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
+        target.submitBlock(header, v, r, s, blockData);
+
+        // attempt transact with 6M + 1 gas.
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                Zenith.PerTransactGasLimitReached.selector, (header.gasLimit / target.PER_TRANSACT_GAS_LIMIT())
+            )
+        );
+        target.transact(chainId, to, data, value, gas + 1, maxFeePerGas);
+    }
+
+    function test_transact_globalGasLimit() public {
+        // submit a block to set the prevGasLimit to 30M
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
+        target.submitBlock(header, v, r, s, blockData);
+
+        // submit 5x transacts with 6M gas, consuming the total 30M global limit
+        for (uint256 i; i < 5; i++) {
+            target.transact(to, data, value, gas, maxFeePerGas);
+        }
+
+        // attempt to submit another transact with 1 gas - should revert.
+        vm.expectRevert(abi.encodeWithSelector(Zenith.GlobalTransactGasLimitReached.selector, header.gasLimit));
+        target.transact(to, data, value, 1, maxFeePerGas);
     }
 }

@@ -4,6 +4,9 @@ pragma solidity ^0.8.24;
 import {Passage} from "./Passage.sol";
 
 contract Zenith {
+    /// @notice Each `transact` call cannot use more than 1/5 of the global `transact` gasLimit for the block.
+    uint256 public constant PER_TRANSACT_GAS_LIMIT = 5;
+
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
 
@@ -30,8 +33,17 @@ contract Zenith {
     }
 
     /// @notice The host block number that a block was last submitted at for a given rollup chainId.
-    /// rollupChainId => host blockNumber that block was last submitted at
+    /// rollupChainId => host blockNumber the last block was submitted at.
     mapping(uint256 => uint256) public lastSubmittedAtBlock;
+
+    /// @notice The gasLimit of the last submitted block for a given rollup chainId.
+    /// @dev NOTE that this can change mid-block, causing some `transact` to have a different limit than others.
+    /// rollupChainId => gasLimit of the previous block.
+    mapping(uint256 => uint256) public currentGasLimit;
+
+    /// @notice The total gasLimit used by `transact` so far in this block.
+    /// rollupChainId => block number => `transasct` gasLimit used so far.
+    mapping(uint256 => mapping(uint256 => uint256)) public transactGasUsed;
 
     /// @notice Registry of permissioned sequencers.
     /// address => TRUE if it's a permissioned sequencer
@@ -47,6 +59,12 @@ contract Zenith {
 
     /// @notice Thrown when attempting to submit more than one rollup block per host block
     error OneRollupBlockPerHostBlock();
+
+    /// @notice Thrown when attempting to use more then the current global `transact` gasLimit for the block.
+    error GlobalTransactGasLimitReached(uint256 globalTransactLimit);
+
+    /// @notice Thrown when attempting to use too much gas per single `transact` call.
+    error PerTransactGasLimitReached(uint256 perTransactLimit);
 
     /// @notice Thrown when attempting to modify sequencer roles if not sequencerAdmin.
     error OnlySequencerAdmin();
@@ -133,11 +151,17 @@ contract Zenith {
         // assert this is the first rollup block submitted for this host block
         if (lastSubmittedAtBlock[header.rollupChainId] == block.number) revert OneRollupBlockPerHostBlock();
         lastSubmittedAtBlock[header.rollupChainId] = block.number;
+        currentGasLimit[header.rollupChainId] = header.gasLimit;
 
         // emit event
         emit BlockSubmitted(
             sequencer, header.rollupChainId, header.gasLimit, header.rewardAddress, header.blockDataHash
         );
+    }
+
+    /// @dev See `transact` for docs.
+    function transact(address to, bytes calldata data, uint256 value, uint256 gas, uint256 maxFeePerGas) external {
+        transact(defaultRollupChainId, to, data, value, gas, maxFeePerGas);
     }
 
     /// @notice Send a special transaction to be sent to the rollup with sender == L1 msg.sender.
@@ -157,13 +181,18 @@ contract Zenith {
         uint256 gas,
         uint256 maxFeePerGas
     ) public {
+        // ensure per-transact gas limit is respected
+        uint256 globalLimit = currentGasLimit[rollupChainId];
+        uint256 perTransactLimit = globalLimit / PER_TRANSACT_GAS_LIMIT;
+        if (gas > perTransactLimit) revert PerTransactGasLimitReached(perTransactLimit);
+
+        // ensure global transact gas limit is respected
+        uint256 gasUsed = transactGasUsed[rollupChainId][block.number];
+        if (gasUsed + gas > globalLimit) revert GlobalTransactGasLimitReached(globalLimit);
+        transactGasUsed[rollupChainId][block.number] = gasUsed + gas;
+
         // emit Transact event
         emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
-    }
-
-    /// @dev See `transact` for docs.
-    function transact(address to, bytes calldata data, uint256 value, uint256 gas, uint256 maxFeePerGas) external {
-        transact(defaultRollupChainId, to, data, value, gas, maxFeePerGas);
     }
 
     /// @notice Construct hash of block details that the sequencer signs.
