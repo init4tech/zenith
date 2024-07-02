@@ -22,36 +22,37 @@ struct Output {
     uint256 amount;
     /// @dev The address to receive the output tokens
     address recipient;
-    /// @dev The destination chain for this output
+    /// @dev When emitted on the origin chain, the destination chain for the Output.
+    ///      When emitted on the destination chain, the origin chain for the Order containing the Output.
     uint32 chainId;
 }
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
 abstract contract OrderDestination {
-    /// @notice Emitted when an Order's Output is sent to the recipient.
-    /// @dev There may be multiple Outputs per Order.
-    /// @param originChainId - The chainId on which the Order was initiated.
-    /// @param recipient - The recipient of the token.
-    /// @param token - The address of the token transferred to the recipient. address(0) corresponds to native Ether.
-    /// @param amount - The amount of the token transferred to the recipient.
-    event OutputFilled(uint256 indexed originChainId, address indexed recipient, address indexed token, uint256 amount);
+    /// @notice Emitted when Order Outputs are sent to their recipients.
+    /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
+    event Filled(Output[] outputs);
 
-    /// @notice Send the Output(s) of an Order to fulfill it.
-    ///         The user calls `initiate` on a rollup; the Builder calls `fill` on the target chain for each Output.
-    /// @custom:emits OutputFilled
-    /// @param originChainId - The chainId on which the Order was initiated.
-    /// @param recipient - The recipient of the token.
-    /// @param token - The address of the token to be transferred to the recipient.
-    ///                address(0) corresponds to native Ether.
-    /// @param amount - The amount of the token to be transferred to the recipient.
-    function fill(uint256 originChainId, address recipient, address token, uint256 amount) external payable {
-        if (token == address(0)) {
-            require(amount == msg.value);
-            payable(recipient).transfer(msg.value);
-        } else {
-            IERC20(token).transferFrom(msg.sender, recipient, amount);
+    /// @notice Send the Output(s) of any number of Orders.
+    ///         The user calls `initiate` on a rollup; the Builder calls `fill` on the target chain aggregating Outputs.
+    ///         Builder may aggregate multiple Outputs with the same (`chainId`, `recipient`, `token`) into a single Output with the summed `amount`.
+    /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
+    /// @param outputs - The Outputs to be transferred.
+    /// @custom:emits Filled
+    function fill(Output[] memory outputs) external payable {
+        // transfer outputs
+        uint256 value = msg.value;
+        for (uint256 i; i < outputs.length; i++) {
+            if (outputs[i].token == address(0)) {
+                // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
+                value -= outputs[i].amount;
+                payable(outputs[i].recipient).transfer(outputs[i].amount);
+            } else {
+                IERC20(outputs[i].token).transferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
+            }
         }
-        emit OutputFilled(originChainId, recipient, token, amount);
+        // emit
+        emit Filled(outputs);
     }
 }
 
@@ -64,6 +65,7 @@ abstract contract OrderOrigin {
     error OnlyBuilder();
 
     /// @notice Emitted when an Order is submitted for fulfillment.
+    /// @dev NOTE that here, Output.chainId denotes the *destination* chainId.
     event Order(uint256 deadline, Input[] inputs, Output[] outputs);
 
     /// @notice Emitted when tokens or native Ether is swept from the contract.
