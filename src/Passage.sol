@@ -2,9 +2,9 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
-/// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
-///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
+/// @notice A contract deployed to Host chain that allows tokens to enter the rollup.
 contract Passage {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
@@ -176,5 +176,48 @@ contract Passage {
     function _configureEnter(address token, bool _canEnter) internal {
         canEnter[token] = _canEnter;
         emit EnterConfigured(token, _canEnter);
+    }
+}
+
+/// @notice Enables tokens to Exit the rollup.
+contract RollupPassage {
+    /// @notice Emitted when native Ether exits the rollup.
+    /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
+    /// @param amount - The amount of Ether exiting the rollup.
+    event Exit(address indexed hostRecipient, uint256 amount);
+
+    /// @notice Emitted when ERC20 tokens exit the rollup.
+    /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
+    /// @param token - The token exiting the rollup.
+    /// @param amount - The amount of ERC20s exiting the rollup.
+    event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
+
+    /// @notice Allows native Ether to exit the rollup by being sent directly to the contract.
+    fallback() external payable {
+        exit(msg.sender);
+    }
+
+    /// @notice Allows native Ether to exit the rollup by being sent directly to the contract.
+    receive() external payable {
+        exit(msg.sender);
+    }
+
+    /// @notice Allows native Ether to exit the rollup.
+    /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
+    /// @custom:emits Exit indicating the amount of Ether that was locked on the rollup & the requested host recipient.
+    function exit(address hostRecipient) public payable {
+        if (msg.value == 0) return;
+        emit Exit(hostRecipient, msg.value);
+    }
+
+    /// @notice Allows ERC20 tokens to exit the rollup.
+    /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
+    /// @param token - The rollup address of the token exiting the rollup.
+    /// @param amount - The amount of tokens exiting the rollup.
+    function exitToken(address hostRecipient, address token, uint256 amount) public {
+        if (amount == 0) return;
+        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        ERC20Burnable(token).burn(amount);
+        emit ExitToken(hostRecipient, token, amount);
     }
 }
