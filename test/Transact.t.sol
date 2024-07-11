@@ -28,18 +28,23 @@ contract TransactTest is Test {
         uint256 maxFeePerGas
     );
 
+    event GasConfigured(uint256 perBlock, uint256 perTransact);
+
     // Passage event
     event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
     function setUp() public {
         // deploy target
         passage = new Passage(block.chainid + 1, address(this), new address[](0));
-        target = new Transactor(block.chainid + 1, passage);
+        target = new Transactor(block.chainid + 1, address(this), passage, gas * 6, gas);
     }
 
     function test_setUp() public {
         assertEq(target.defaultRollupChainId(), block.chainid + 1);
+        assertEq(target.gasAdmin(), address(this));
         assertEq(address(target.passage()), address(passage));
+        assertEq(target.perBlockGasLimit(), gas * 6);
+        assertEq(target.perTransactGasLimit(), gas);
     }
 
     function test_transact() public {
@@ -87,5 +92,24 @@ contract TransactTest is Test {
         // attempt to submit another transact with 1 gas - should revert.
         vm.expectRevert(abi.encodeWithSelector(Transactor.PerBlockTransactGasLimit.selector));
         target.transact(to, data, value, 1, maxFeePerGas);
+    }
+
+    function test_onlyGasAdmin() public {
+        vm.startPrank(address(0x01));
+        vm.expectRevert(Transactor.OnlyGasAdmin.selector);
+        target.configureGas(0, 0);
+    }
+
+    function test_configureGas() public {
+        uint256 newPerBlock = 40_000_000;
+        uint256 newPerTransact = 2_000_000;
+
+        // configure gas
+        vm.expectEmit();
+        emit GasConfigured(newPerBlock, newPerTransact);
+        target.configureGas(newPerBlock, newPerTransact);
+
+        assertEq(target.perBlockGasLimit(), newPerBlock);
+        assertEq(target.perTransactGasLimit(), newPerTransact);
     }
 }
