@@ -2,9 +2,10 @@
 pragma solidity ^0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {Passage} from "../src/Passage.sol";
+import {Passage, RollupPassage} from "../src/Passage.sol";
 import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
+import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 contract PassageTest is Test {
     Passage public target;
@@ -187,5 +188,54 @@ contract PassageTest is Test {
         emit Withdrawal(token, recipient, amount);
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transfer.selector, recipient, amount));
         target.withdraw(token, recipient, amount);
+    }
+}
+
+contract RollupPassageTest is Test {
+    RollupPassage public target;
+    address token;
+    address recipient = address(0x123);
+    uint256 amount = 200;
+
+    event Exit(address indexed hostRecipient, uint256 amount);
+
+    event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
+
+    function setUp() public {
+        // deploy target
+        target = new RollupPassage();
+
+        // deploy token
+        token = address(new TestERC20("hi", "HI"));
+        TestERC20(token).mint(address(this), amount * 10000);
+        TestERC20(token).approve(address(target), amount * 10000);
+    }
+
+    function test_receive() public {
+        vm.expectEmit();
+        emit Exit(address(this), amount);
+        address(target).call{value: amount}("");
+    }
+
+    function test_fallback() public {
+        vm.expectEmit();
+        emit Exit(address(this), amount);
+        address(target).call{value: amount}("0xabcd");
+    }
+
+    function test_exit() public {
+        vm.expectEmit();
+        emit Exit(recipient, amount);
+        target.exit{value: amount}(recipient);
+    }
+
+    function test_exitToken() public {
+        vm.expectEmit();
+        emit ExitToken(recipient, token, amount);
+        vm.expectCall(
+            token, abi.encodeWithSelector(ERC20.transferFrom.selector, address(this), address(target), amount)
+        );
+        vm.expectCall(token, abi.encodeWithSelector(ERC20Burnable.burn.selector, amount));
+        target.exitToken(recipient, token, amount);
     }
 }
