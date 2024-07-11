@@ -151,36 +151,6 @@ contract PassageTest is Test {
         target.enterToken(recipient, token, amount);
     }
 
-    function test_transact() public {
-        vm.expectEmit();
-        emit Transact(chainId, address(this), to, data, value, gas, maxFeePerGas);
-        target.transact(chainId, to, data, value, gas, maxFeePerGas);
-
-        vm.expectEmit();
-        emit Enter(chainId, address(this), amount);
-        target.transact{value: amount}(chainId, to, data, value, gas, maxFeePerGas);
-    }
-
-    function test_transact_defaultChain() public {
-        vm.expectEmit();
-        emit Transact(target.defaultRollupChainId(), address(this), to, data, value, gas, maxFeePerGas);
-        target.transact(to, data, value, gas, maxFeePerGas);
-
-        vm.expectEmit();
-        emit Enter(target.defaultRollupChainId(), address(this), amount);
-        target.transact{value: amount}(to, data, value, gas, maxFeePerGas);
-    }
-
-    function test_enterTransact() public {
-        vm.expectEmit();
-        emit Transact(chainId, address(this), to, data, value, gas, maxFeePerGas);
-        target.enterTransact(chainId, recipient, to, data, value, gas, maxFeePerGas);
-
-        vm.expectEmit();
-        emit Enter(chainId, recipient, amount);
-        target.enterTransact{value: amount}(chainId, recipient, to, data, value, gas, maxFeePerGas);
-    }
-
     function test_withdraw() public {
         TestERC20(token).mint(address(target), amount);
 
