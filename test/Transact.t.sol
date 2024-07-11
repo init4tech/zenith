@@ -15,7 +15,7 @@ contract TransactTest is Test {
     address to = address(0x01);
     bytes data = abi.encodeWithSelector(Passage.withdraw.selector, address(this), recipient, amount);
     uint256 value = 100;
-    uint256 gas = 10_000_000;
+    uint256 gas = 5_000_000;
     uint256 maxFeePerGas = 50;
 
     event Transact(
@@ -70,5 +70,22 @@ contract TransactTest is Test {
         vm.expectEmit(address(passage));
         emit Enter(chainId, recipient, amount);
         target.enterTransact{value: amount}(chainId, recipient, to, data, value, gas, maxFeePerGas);
+    }
+
+    function test_transact_perTransactGasLimit() public {
+        // attempt transact with 5M + 1 gas.
+        vm.expectRevert(Transactor.PerTransactGasLimit.selector);
+        target.transact(chainId, to, data, value, gas + 1, maxFeePerGas);
+    }
+
+    function test_transact_globalGasLimit() public {
+        // submit 6x transacts with 5M gas, consuming the total 30M global limit
+        for (uint256 i; i < 6; i++) {
+            target.transact(to, data, value, gas, maxFeePerGas);
+        }
+
+        // attempt to submit another transact with 1 gas - should revert.
+        vm.expectRevert(abi.encodeWithSelector(Transactor.PerBlockTransactGasLimit.selector));
+        target.transact(to, data, value, 1, maxFeePerGas);
     }
 }
