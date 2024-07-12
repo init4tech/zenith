@@ -2,10 +2,11 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Permit, PermitLib} from "./Permit.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup,
 ///         and enables Builders to fulfill requests to exchange tokens on the Rollup for tokens on the Host.
-contract Passage {
+contract Passage is PermitLib {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
 
@@ -104,6 +105,18 @@ contract Passage {
     /// @dev see `enterToken` for docs.
     function enterToken(address rollupRecipient, address token, uint256 amount) external {
         enterToken(defaultRollupChainId, rollupRecipient, token, amount);
+    }
+
+    /// @notice Allows ERC20 tokens to enter the rollup with a permit message.
+    function enterTokenPermit(
+        uint256 rollupChainId,
+        address rollupRecipient,
+        address token,
+        uint256 amount,
+        Permit memory permit
+    ) external {
+        _permit(permit);
+        enterToken(rollupChainId, rollupRecipient, token, amount);
     }
 
     /// @notice Allows a special transaction to be sent to the rollup with sender == L1 msg.sender.

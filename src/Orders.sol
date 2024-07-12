@@ -2,6 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {Permit, PermitLib} from "./Permit.sol";
 
 /// @notice Tokens sent by the swapper as inputs to the order
 /// @dev From ERC-7683
@@ -28,7 +29,7 @@ struct Output {
 }
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
-abstract contract OrderDestination {
+abstract contract OrderDestination is PermitLib {
     /// @notice Emitted when Order Outputs are sent to their recipients.
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
     event Filled(Output[] outputs);
@@ -39,7 +40,7 @@ abstract contract OrderDestination {
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
     /// @param outputs - The Outputs to be transferred.
     /// @custom:emits Filled
-    function fill(Output[] memory outputs) external payable {
+    function fill(Output[] memory outputs) public payable {
         // transfer outputs
         uint256 value = msg.value;
         for (uint256 i; i < outputs.length; i++) {
@@ -54,10 +55,17 @@ abstract contract OrderDestination {
         // emit
         emit Filled(outputs);
     }
+
+    function fillPermit(Output[] memory outputs, Permit[] memory permits) external payable {
+        // first, execute token permissions to set token allowance
+        _permit(permits);
+        // then, fill orders
+        fill(outputs);
+    }
 }
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
-abstract contract OrderOrigin {
+abstract contract OrderOrigin is PermitLib {
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
 
@@ -86,7 +94,7 @@ abstract contract OrderOrigin {
     /// @param outputs - The token amounts that must be received on their target chain(s) in order for the Order to be executed.
     /// @custom:reverts OrderExpired if the deadline has passed.
     /// @custom:emits Order if the transaction mines.
-    function initiate(uint256 deadline, Input[] memory inputs, Output[] memory outputs) external payable {
+    function initiate(uint256 deadline, Input[] memory inputs, Output[] memory outputs) public payable {
         // check that the deadline hasn't passed
         if (block.timestamp > deadline) revert OrderExpired();
 
@@ -95,6 +103,16 @@ abstract contract OrderOrigin {
 
         // emit
         emit Order(deadline, inputs, outputs);
+    }
+
+    function initiatePermit(Permit[] memory permits, uint256 deadline, Input[] memory inputs, Output[] memory outputs)
+        external
+        payable
+    {
+        // first, execute token permissions to set token allowance
+        _permit(permits);
+        // then, initiate the Order
+        initiate(deadline, inputs, outputs);
     }
 
     /// @notice Transfer the Order inputs to this contract, where they can be collected by the Order filler.
