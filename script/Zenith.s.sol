@@ -4,20 +4,22 @@ pragma solidity ^0.8.24;
 import {Script} from "forge-std/Script.sol";
 import {Zenith} from "../src/Zenith.sol";
 import {Passage, RollupPassage} from "../src/Passage.sol";
+import {Transactor} from "../src/Transact.sol";
 import {HostOrders, RollupOrders} from "../src/Orders.sol";
 
 contract ZenithScript is Script {
     // deploy:
-    // forge script ZenithScript --sig "deploy(uint256,address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $SEQUENCER_ADMIN_ADDRESS
+    // forge script ZenithScript --sig "deploy(uint256,address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $SEQUENCER_AND_GAS_ADMIN_ADDRESS
     function deploy(
         uint256 defaultRollupChainId,
         address withdrawalAdmin,
         address[] memory initialEnterTokens,
-        address sequencerAdmin
-    ) public returns (Zenith z, Passage p, HostOrders m) {
+        address sequencerAndGasAdmin
+    ) public returns (Zenith z, Passage p, Transactor t, HostOrders m) {
         vm.startBroadcast();
-        z = new Zenith(sequencerAdmin);
+        z = new Zenith(sequencerAndGasAdmin);
         p = new Passage(defaultRollupChainId, withdrawalAdmin, initialEnterTokens);
+        t = new Transactor(defaultRollupChainId, sequencerAndGasAdmin, p, 30_000_000, 5_000_000);
         m = new HostOrders();
     }
 
