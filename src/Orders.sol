@@ -2,45 +2,30 @@
 pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
-
-/// @notice Tokens sent by the swapper as inputs to the order
-/// @dev From ERC-7683
-struct Input {
-    /// @dev The address of the ERC20 token on the origin chain
-    address token;
-    /// @dev The amount of the token to be sent
-    uint256 amount;
-}
-
-/// @notice Tokens that must be receive for a valid order fulfillment
-/// @dev From ERC-7683
-struct Output {
-    /// @dev The address of the ERC20 token on the destination chain
-    /// @dev address(0) used as a sentinel for the native token
-    address token;
-    /// @dev The amount of the token to be sent
-    uint256 amount;
-    /// @dev The address to receive the output tokens
-    address recipient;
-    /// @dev When emitted on the origin chain, the destination chain for the Output.
-    ///      When emitted on the destination chain, the origin chain for the Order containing the Output.
-    uint32 chainId;
-}
+import {Permit2Batch, UsesPermit2} from "./UsesPermit2.sol";
+import {IOrders} from "./IOrders.sol";
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
-abstract contract OrderDestination {
+abstract contract OrderDestination is IOrders, UsesPermit2 {
     /// @notice Emitted when Order Outputs are sent to their recipients.
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
     event Filled(Output[] outputs);
 
-    /// @notice Send the Output(s) of any number of Orders.
-    ///         The user calls `initiate` on a rollup; the Builder calls `fill` on the target chain aggregating Outputs.
-    ///         Builder may aggregate multiple Outputs with the same (`chainId`, `recipient`, `token`) into a single Output with the summed `amount`.
+    /// @notice Fill any number of Order(s), by transferring their Output(s).
+    /// @dev Filler may aggregate multiple Outputs with the same (`chainId`, `recipient`, `token`) into a single Output with the summed `amount`.
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
     /// @param outputs - The Outputs to be transferred.
     /// @custom:emits Filled
     function fill(Output[] memory outputs) external payable {
         // transfer outputs
+        _transferOutputs(outputs);
+
+        // emit
+        emit Filled(outputs);
+    }
+
+    /// @notice Transfer the Order Outputs to their recipients.
+    function _transferOutputs(Output[] memory outputs) internal {
         uint256 value = msg.value;
         for (uint256 i; i < outputs.length; i++) {
             if (outputs[i].token == address(0)) {
@@ -51,18 +36,31 @@ abstract contract OrderDestination {
                 IERC20(outputs[i].token).transferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
             }
         }
+    }
+
+    /// @notice Fill any number of Order(s), by transferring their Output(s) via permit2 signed batch transfer.
+    /// @dev Can only provide ERC20 tokens as Outputs.
+    /// @dev Filler may aggregate multiple Outputs with the same (`chainId`, `recipient`, `token`) into a single Output with the summed `amount`.
+    /// @dev the permit2 signer is the Filler providing the Outputs.
+    /// @dev the permit2 `permitted` tokens MUST match provided Outputs.
+    /// @dev Filler MUST submit `fill` and `intitiate` within an atomic bundle.
+    /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
+    /// @param outputs - The Outputs to be transferred. signed over via permit2 witness.
+    /// @param permit2 - the permit2 details, signer, and signature.
+    /// @custom:emits Filled
+    function fillPermit2(Output[] memory outputs, Permit2Batch calldata permit2) external {
+        // transfer all tokens to the Output recipients via permit2 (includes check on nonce & deadline)
+        _permitWitnessTransferFrom(outputs, _fillTransferDetails(outputs, permit2.permit.permitted), permit2);
+
         // emit
         emit Filled(outputs);
     }
 }
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
-abstract contract OrderOrigin {
+abstract contract OrderOrigin is IOrders, UsesPermit2 {
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
-
-    /// @notice Thrown when trying to call `sweep` if not the Builder of the block.
-    error OnlyBuilder();
 
     /// @notice Emitted when an Order is submitted for fulfillment.
     /// @dev NOTE that here, Output.chainId denotes the *destination* chainId.
@@ -73,14 +71,15 @@ abstract contract OrderOrigin {
     ///      Intentionally does not bother to emit which token(s) were swept, nor their amounts.
     event Sweep(address indexed recipient, address indexed token, uint256 amount);
 
-    /// @notice Request to swap ERC20s.
+    /// @notice Initiate an Order.
+    /// @dev Filler MUST submit `fill` and `intitiate` + `sweep` within an atomic bundle.
+    /// @dev NOTE that here, Output.chainId denotes the *target* chainId.
     /// @dev inputs are provided on the rollup; in exchange,
     ///      outputs are expected to be received on the target chain(s).
-    /// @dev Fees paid to the Builders for fulfilling the Orders
-    ///      can be included within the "exchange rate" between inputs and outputs.
-    /// @dev The Builder claims the inputs from the contract by submitting `sweep` transactions within the same block.
     /// @dev The Rollup STF MUST NOT apply `initiate` transactions to the rollup state
     ///      UNLESS the outputs are delivered on the target chains within the same block.
+    /// @dev Fees paid to the Builders for fulfilling the Orders
+    ///      can be included within the "exchange rate" between inputs and outputs.
     /// @param deadline - The deadline at or before which the Order must be fulfilled.
     /// @param inputs - The token amounts offered by the swapper in exchange for the outputs.
     /// @param outputs - The token amounts that must be received on their target chain(s) in order for the Order to be executed.
@@ -97,7 +96,7 @@ abstract contract OrderOrigin {
         emit Order(deadline, inputs, outputs);
     }
 
-    /// @notice Transfer the Order inputs to this contract, where they can be collected by the Order filler.
+    /// @notice Transfer the Order inputs to this contract, where they can be collected by the Order filler via `sweep`.
     function _transferInputs(Input[] memory inputs) internal {
         uint256 value = msg.value;
         for (uint256 i; i < inputs.length; i++) {
@@ -110,6 +109,22 @@ abstract contract OrderOrigin {
         }
     }
 
+    /// @notice Initiate an Order, transferring Input tokens to the Filler via permit2 signed batch transfer.
+    /// @dev Can only provide ERC20 tokens as Inputs.
+    /// @dev the permit2 signer is the swapper providing the Input tokens in exchange for the Outputs.
+    /// @dev Filler MUST submit `fill` and `intitiate` within an atomic bundle.
+    /// @dev NOTE that here, Output.chainId denotes the *target* chainId.
+    /// @param tokenRecipient - the recipient of the Input tokens, provided by msg.sender (un-verified by permit2).
+    /// @param outputs - the Outputs required in exchange for the Input tokens. signed over via permit2 witness.
+    /// @param permit2 - the permit2 details, signer, and signature.
+    function initiatePermit2(address tokenRecipient, Output[] memory outputs, Permit2Batch calldata permit2) external {
+        // transfer all tokens to the tokenRecipient via permit2 (includes check on nonce & deadline)
+        _permitWitnessTransferFrom(outputs, _initiateTransferDetails(tokenRecipient, permit2.permit.permitted), permit2);
+
+        // emit
+        emit Order(permit2.permit.deadline, _inputs(permit2.permit.permitted), outputs);
+    }
+
     /// @notice Transfer the entire balance of ERC20 tokens to the recipient.
     /// @dev Called by the Builder within the same block as users' `initiate` transactions
     ///      to claim the `inputs`.
@@ -119,7 +134,6 @@ abstract contract OrderOrigin {
     /// @custom:emits Sweep
     /// @custom:reverts OnlyBuilder if called by non-block builder
     function sweep(address recipient, address token) public {
-        if (msg.sender != block.coinbase) revert OnlyBuilder();
         // send ETH or tokens
         uint256 balance;
         if (token == address(0)) {
@@ -133,6 +147,10 @@ abstract contract OrderOrigin {
     }
 }
 
-contract HostOrders is OrderDestination {}
+contract HostOrders is OrderDestination {
+    constructor(address _permit2) UsesPermit2(_permit2) {}
+}
 
-contract RollupOrders is OrderOrigin, OrderDestination {}
+contract RollupOrders is OrderOrigin, OrderDestination {
+    constructor(address _permit2) UsesPermit2(_permit2) {}
+}

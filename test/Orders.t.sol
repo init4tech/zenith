@@ -2,14 +2,16 @@
 pragma solidity ^0.8.24;
 
 import {Test, console2} from "forge-std/Test.sol";
-import {RollupOrders, Input, Output, OrderOrigin} from "../src/Orders.sol";
 import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 
+import {RollupOrders, OrderOrigin} from "../src/Orders.sol";
+import {IOrders} from "../src/IOrders.sol";
+
 contract OrdersTest is Test {
     RollupOrders public target;
-    Input[] public inputs;
-    Output[] public outputs;
+    IOrders.Input[] public inputs;
+    IOrders.Output[] public outputs;
 
     mapping(address => bool) isToken;
 
@@ -19,14 +21,14 @@ contract OrdersTest is Test {
     uint256 amount = 200;
     uint256 deadline = block.timestamp;
 
-    event Filled(Output[] outputs);
+    event Filled(IOrders.Output[] outputs);
 
-    event Order(uint256 deadline, Input[] inputs, Output[] outputs);
+    event Order(uint256 deadline, IOrders.Input[] inputs, IOrders.Output[] outputs);
 
     event Sweep(address indexed recipient, address indexed token, uint256 amount);
 
     function setUp() public {
-        target = new RollupOrders();
+        target = new RollupOrders(address(0));
 
         // setup token
         token = address(new TestERC20("hi", "HI"));
@@ -35,10 +37,10 @@ contract OrdersTest is Test {
         isToken[token] = true;
 
         // setup Order Inputs/Outputs
-        Input memory input = Input(token, amount);
+        IOrders.Input memory input = IOrders.Input(token, amount);
         inputs.push(input);
 
-        Output memory output = Output(token, amount, recipient, chainId);
+        IOrders.Output memory output = IOrders.Output(token, amount, recipient, chainId);
         outputs.push(output);
     }
 
@@ -70,7 +72,7 @@ contract OrdersTest is Test {
     // input ETH and ERC20
     function test_initiate_both() public {
         // add ETH input
-        inputs.push(Input(address(0), amount));
+        inputs.push(IOrders.Input(address(0), amount));
 
         // expect Order event is initiated, ERC20 is transferred
         vm.expectEmit();
@@ -92,7 +94,7 @@ contract OrdersTest is Test {
         TestERC20(token2).approve(address(target), amount * 10000);
 
         // add second token input
-        inputs.push(Input(token2, amount * 2));
+        inputs.push(IOrders.Input(token2, amount * 2));
 
         // expect Order event is initiated, ERC20 is transferred
         vm.expectEmit();
@@ -111,7 +113,7 @@ contract OrdersTest is Test {
         // change first input to ETH
         inputs[0].token = address(0);
         // add second ETH input
-        inputs.push(Input(address(0), amount * 2));
+        inputs.push(IOrders.Input(address(0), amount * 2));
 
         // expect Order event is initiated
         vm.expectEmit();
@@ -126,7 +128,7 @@ contract OrdersTest is Test {
         // change first input to ETH
         inputs[0].token = address(0);
         // add second ETH input
-        inputs.push(Input(address(0), 1));
+        inputs.push(IOrders.Input(address(0), 1));
 
         // total ETH inputs should be amount + 1; function should underflow only sending amount
         vm.expectRevert();
@@ -172,11 +174,6 @@ contract OrdersTest is Test {
         target.sweep(recipient, token);
     }
 
-    function test_onlyBuilder() public {
-        vm.expectRevert(OrderOrigin.OnlyBuilder.selector);
-        target.sweep(recipient, token);
-    }
-
     function test_fill_ETH() public {
         outputs[0].token = address(0);
 
@@ -197,7 +194,7 @@ contract OrdersTest is Test {
 
     function test_fill_both() public {
         // add ETH output
-        outputs.push(Output(address(0), amount * 2, recipient, chainId));
+        outputs.push(IOrders.Output(address(0), amount * 2, recipient, chainId));
 
         // expect Outputs are filled, ERC20 is transferred
         vm.expectEmit();
@@ -214,7 +211,7 @@ contract OrdersTest is Test {
         // change first output to ETH
         outputs[0].token = address(0);
         // add second ETH oputput
-        outputs.push(Output(address(0), amount * 2, recipient, chainId));
+        outputs.push(IOrders.Output(address(0), amount * 2, recipient, chainId));
 
         // expect Order event is initiated
         vm.expectEmit();
@@ -229,7 +226,7 @@ contract OrdersTest is Test {
         // change first output to ETH
         outputs[0].token = address(0);
         // add second ETH output
-        outputs.push(Output(address(0), 1, recipient, chainId));
+        outputs.push(IOrders.Output(address(0), 1, recipient, chainId));
 
         // total ETH outputs should be `amount` + 1; function should underflow only sending `amount`
         vm.expectRevert();

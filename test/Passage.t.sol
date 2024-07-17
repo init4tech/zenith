@@ -51,7 +51,7 @@ contract PassageTest is Test {
         // deploy target
         address[] memory initialEnterTokens = new address[](1);
         initialEnterTokens[0] = token;
-        target = new Passage(block.chainid + 1, address(this), initialEnterTokens);
+        target = new Passage(block.chainid + 1, address(this), initialEnterTokens, address(0));
         TestERC20(token).approve(address(target), amount * 10000);
 
         // deploy token two, don't configure
@@ -173,7 +173,7 @@ contract RollupPassageTest is Test {
 
     function setUp() public {
         // deploy target
-        target = new RollupPassage();
+        target = new RollupPassage(address(0));
 
         // deploy token
         token = address(new TestERC20("hi", "HI"));

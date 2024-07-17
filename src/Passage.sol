@@ -3,9 +3,10 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {UsesPermit2, Permit2} from "./UsesPermit2.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup.
-contract Passage {
+contract Passage is UsesPermit2 {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
 
@@ -44,7 +45,12 @@ contract Passage {
 
     /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
     ///                                when entering the rollup via fallback() or receive() fns.
-    constructor(uint256 _defaultRollupChainId, address _tokenAdmin, address[] memory initialEnterTokens) {
+    constructor(
+        uint256 _defaultRollupChainId,
+        address _tokenAdmin,
+        address[] memory initialEnterTokens,
+        address _permit2
+    ) UsesPermit2(_permit2) {
         defaultRollupChainId = _defaultRollupChainId;
         tokenAdmin = _tokenAdmin;
         for (uint256 i; i < initialEnterTokens.length; i++) {
@@ -83,16 +89,34 @@ contract Passage {
     /// @param token - The host chain address of the token entering the rollup.
     /// @param amount - The amount of tokens entering the rollup.
     function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
-        if (!canEnter[token]) revert DisallowedEnter(token);
-        if (amount == 0) return;
+        // transfer tokens to this contract
         IERC20(token).transferFrom(msg.sender, address(this), amount);
-        emit EnterToken(rollupChainId, rollupRecipient, token, amount);
+        // check and emit
+        _enterToken(rollupChainId, rollupRecipient, token, amount);
     }
 
     /// @notice Allows ERC20 tokens to enter the default rollup.
     /// @dev see `enterToken` for docs.
     function enterToken(address rollupRecipient, address token, uint256 amount) external {
         enterToken(defaultRollupChainId, rollupRecipient, token, amount);
+    }
+
+    /// @notice Allows ERC20 tokens to enter the rollup.
+    /// @param rollupChainId - The rollup chain to enter.
+    /// @param rollupRecipient - The recipient of tokens on the rollup.
+    /// @param permit2 - The Permit2 information, including token & amount.
+    function enterTokenPermit2(uint256 rollupChainId, address rollupRecipient, Permit2 calldata permit2) public {
+        // transfer tokens to this contract via permit2
+        _permitWitnessTransferFrom(_witness(rollupChainId, rollupRecipient), permit2);
+        // check and emit
+        _enterToken(rollupChainId, rollupRecipient, permit2.permit.permitted.token, permit2.permit.permitted.amount);
+    }
+
+    /// @notice Shared functionality for tokens entering rollup.
+    function _enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) internal {
+        if (amount == 0) return;
+        if (!canEnter[token]) revert DisallowedEnter(token);
+        emit EnterToken(rollupChainId, rollupRecipient, token, amount);
     }
 
     /// @notice Alow/Disallow a given ERC20 token to enter the rollup.
@@ -121,7 +145,7 @@ contract Passage {
 }
 
 /// @notice Enables tokens to Exit the rollup.
-contract RollupPassage {
+contract RollupPassage is UsesPermit2 {
     /// @notice Emitted when native Ether exits the rollup.
     /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
     /// @param amount - The amount of Ether exiting the rollup.
@@ -132,6 +156,8 @@ contract RollupPassage {
     /// @param token - The token exiting the rollup.
     /// @param amount - The amount of ERC20s exiting the rollup.
     event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
+
+    constructor(address _permit2) UsesPermit2(_permit2) {}
 
     /// @notice Allows native Ether to exit the rollup by being sent directly to the contract.
     fallback() external payable {
@@ -155,9 +181,28 @@ contract RollupPassage {
     /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
     /// @param token - The rollup address of the token exiting the rollup.
     /// @param amount - The amount of tokens exiting the rollup.
+    /// @custom:emits ExitToken
     function exitToken(address hostRecipient, address token, uint256 amount) public {
-        if (amount == 0) return;
+        // transfer tokens to this contract
         IERC20(token).transferFrom(msg.sender, address(this), amount);
+        // burn and emit
+        _exitToken(hostRecipient, token, amount);
+    }
+
+    /// @notice Allows ERC20 tokens to exit the rollup.
+    /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
+    /// @param permit2 - The Permit2 information, including token & amount.
+    /// @custom:emits ExitToken
+    function exitTokenPermit2(address hostRecipient, Permit2 calldata permit2) public {
+        // transfer tokens to this contract
+        _permitWitnessTransferFrom(_witness(hostRecipient), permit2);
+        // burn and emit
+        _exitToken(hostRecipient, permit2.permit.permitted.token, permit2.permit.permitted.amount);
+    }
+
+    /// @notice Shared functionality for tokens exiting rollup.
+    function _exitToken(address hostRecipient, address token, uint256 amount) internal {
+        if (amount == 0) return;
         ERC20Burnable(token).burn(amount);
         emit ExitToken(hostRecipient, token, amount);
     }
