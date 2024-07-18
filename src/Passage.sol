@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {UsesPermit2, Permit2} from "./permit2/UsesPermit2.sol";
+import {PassagePermit2, UsesPermit2} from "./permit2/UsesPermit2.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup.
-contract Passage is UsesPermit2 {
+contract Passage is PassagePermit2 {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
 
@@ -105,7 +105,9 @@ contract Passage is UsesPermit2 {
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of tokens on the rollup.
     /// @param permit2 - The Permit2 information, including token & amount.
-    function enterTokenPermit2(uint256 rollupChainId, address rollupRecipient, Permit2 calldata permit2) public {
+    function enterTokenPermit2(uint256 rollupChainId, address rollupRecipient, PassagePermit2.Permit2 calldata permit2)
+        public
+    {
         // transfer tokens to this contract via permit2
         _permitWitnessTransferFrom(_witness(rollupChainId, rollupRecipient), permit2);
         // check and emit
@@ -145,7 +147,7 @@ contract Passage is UsesPermit2 {
 }
 
 /// @notice Enables tokens to Exit the rollup.
-contract RollupPassage is UsesPermit2 {
+contract RollupPassage is PassagePermit2 {
     /// @notice Emitted when native Ether exits the rollup.
     /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
     /// @param amount - The amount of Ether exiting the rollup.
@@ -193,7 +195,7 @@ contract RollupPassage is UsesPermit2 {
     /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
     /// @param permit2 - The Permit2 information, including token & amount.
     /// @custom:emits ExitToken
-    function exitTokenPermit2(address hostRecipient, Permit2 calldata permit2) public {
+    function exitTokenPermit2(address hostRecipient, PassagePermit2.Permit2 calldata permit2) public {
         // transfer tokens to this contract
         _permitWitnessTransferFrom(_witness(hostRecipient), permit2);
         // burn and emit

@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {UsesPermit2, Permit2Batch} from "./permit2/UsesPermit2.sol";
+import {OrdersPermit2, UsesPermit2} from "./permit2/UsesPermit2.sol";
 import {IOrders} from "./interfaces/IOrders.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
-abstract contract OrderDestination is IOrders, UsesPermit2 {
+abstract contract OrderDestination is IOrders, OrdersPermit2 {
     /// @notice Emitted when Order Outputs are sent to their recipients.
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
     event Filled(Output[] outputs);
@@ -48,7 +48,7 @@ abstract contract OrderDestination is IOrders, UsesPermit2 {
     /// @param outputs - The Outputs to be transferred. signed over via permit2 witness.
     /// @param permit2 - the permit2 details, signer, and signature.
     /// @custom:emits Filled
-    function fillPermit2(Output[] memory outputs, Permit2Batch calldata permit2) external {
+    function fillPermit2(Output[] memory outputs, OrdersPermit2.Permit2Batch calldata permit2) external {
         // transfer all tokens to the Output recipients via permit2 (includes check on nonce & deadline)
         _permitWitnessTransferFrom(outputs, _fillTransferDetails(outputs, permit2.permit.permitted), permit2);
 
@@ -58,7 +58,7 @@ abstract contract OrderDestination is IOrders, UsesPermit2 {
 }
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
-abstract contract OrderOrigin is IOrders, UsesPermit2 {
+abstract contract OrderOrigin is IOrders, OrdersPermit2 {
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
 
@@ -117,7 +117,11 @@ abstract contract OrderOrigin is IOrders, UsesPermit2 {
     /// @param tokenRecipient - the recipient of the Input tokens, provided by msg.sender (un-verified by permit2).
     /// @param outputs - the Outputs required in exchange for the Input tokens. signed over via permit2 witness.
     /// @param permit2 - the permit2 details, signer, and signature.
-    function initiatePermit2(address tokenRecipient, Output[] memory outputs, Permit2Batch calldata permit2) external {
+    function initiatePermit2(
+        address tokenRecipient,
+        Output[] memory outputs,
+        OrdersPermit2.Permit2Batch calldata permit2
+    ) external {
         // transfer all tokens to the tokenRecipient via permit2 (includes check on nonce & deadline)
         _permitWitnessTransferFrom(outputs, _initiateTransferDetails(tokenRecipient, permit2.permit.permitted), permit2);
 
