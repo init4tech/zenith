@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {ISignatureTransfer} from "./vendored/ISignatureTransfer.sol";
+import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {IOrders} from "./IOrders.sol";
 
 /// @param permit - the permit2 batch token transfer details. includes a `deadline` and an unordered `nonce`.
