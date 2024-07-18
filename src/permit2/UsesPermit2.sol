@@ -114,7 +114,26 @@ abstract contract OrdersPermit2 is UsesPermit2 {
 }
 
 abstract contract PassagePermit2 is UsesPermit2 {
-    string constant _WITNESS_TYPESTRING = "bytes32 witness)TokenPermissions(address token,uint256 amount)";
+    string constant _ENTER_WITNESS_TYPESTRING =
+        "EnterWitness witness)EnterWitness(uint256 rollupChainId,address rollupRecipient)TokenPermissions(address token,uint256 amount)";
+
+    bytes32 constant _ENTER_WITNESS_TYPEHASH = keccak256("EnterWitness(uint256 rollupChainId,address rollupRecipient)");
+
+    string constant _EXIT_WITNESS_TYPESTRING =
+        "ExitWitness witness)ExitWitness(address hostRecipient)TokenPermissions(address token,uint256 amount)";
+
+    bytes32 constant _EXIT_WITNESS_TYPEHASH = keccak256("ExitWitness(address hostRecipient)");
+
+    /// @notice Struct to hash Enter witness data into a 32-byte witness field, in an EIP-712 compliant way.
+    struct EnterWitness {
+        uint256 rollupChainId;
+        address rollupRecipient;
+    }
+
+    /// @notice Struct to hash Exit witness data into a 32-byte witness field, in an EIP-712 compliant way.
+    struct ExitWitness {
+        address hostRecipient;
+    }
 
     /// @param permit - the permit2 single token transfer details. includes a `deadline` and an unordered `nonce`.
     /// @param signer - the signer of the permit2 info; the owner of the tokens.
@@ -128,27 +147,27 @@ abstract contract PassagePermit2 is UsesPermit2 {
     /// @notice Transfer tokens using permit2.
     /// @param witness - the pre-hashed witness field.
     /// @param permit2 - the Permit2 information.
-    function _permitWitnessTransferFrom(bytes32 witness, Permit2 calldata permit2) internal {
+    function _permitWitnessTransferFrom(bytes32 witness, bool isEnter, Permit2 calldata permit2) internal {
         ISignatureTransfer(permit2Contract).permitWitnessTransferFrom(
             permit2.permit,
             _passageTransferDetails(permit2.permit.permitted),
             permit2.owner,
             witness,
-            _WITNESS_TYPESTRING,
+            isEnter ? _ENTER_WITNESS_TYPESTRING : _EXIT_WITNESS_TYPESTRING,
             permit2.signature
         );
     }
 
     /// @notice Encode & hash the rollupChainId and rollupRecipient for use as a permit2 witness.
     /// @return witness - the encoded witness field.
-    function _witness(uint256 rollupChainId, address rollupRecipient) internal pure returns (bytes32 witness) {
-        witness = keccak256(abi.encode(rollupChainId, rollupRecipient));
+    function _enterWitness(uint256 rollupChainId, address rollupRecipient) internal pure returns (bytes32 witness) {
+        witness = keccak256(abi.encode(_ENTER_WITNESS_TYPEHASH, EnterWitness(rollupChainId, rollupRecipient)));
     }
 
     /// @notice Hash the hostRecipient for use as a permit2 witness.
     /// @return witness - the encoded witness field.
-    function _witness(address hostRecipient) internal pure returns (bytes32 witness) {
-        witness = keccak256(abi.encode(hostRecipient));
+    function _exitWitness(address hostRecipient) internal pure returns (bytes32 witness) {
+        witness = keccak256(abi.encode(_EXIT_WITNESS_TYPEHASH, ExitWitness(hostRecipient)));
     }
 
     /// @notice transform TokenPermissions to TransferDetails, for passing to permit2.

@@ -109,7 +109,7 @@ contract Passage is PassagePermit2 {
         public
     {
         // transfer tokens to this contract via permit2
-        _permitWitnessTransferFrom(_witness(rollupChainId, rollupRecipient), permit2);
+        _permitWitnessTransferFrom(_enterWitness(rollupChainId, rollupRecipient), true, permit2);
         // check and emit
         _enterToken(rollupChainId, rollupRecipient, permit2.permit.permitted.token, permit2.permit.permitted.amount);
     }
@@ -197,7 +197,7 @@ contract RollupPassage is PassagePermit2 {
     /// @custom:emits ExitToken
     function exitTokenPermit2(address hostRecipient, PassagePermit2.Permit2 calldata permit2) public {
         // transfer tokens to this contract
-        _permitWitnessTransferFrom(_witness(hostRecipient), permit2);
+        _permitWitnessTransferFrom(_exitWitness(hostRecipient), false, permit2);
         // burn and emit
         _exitToken(hostRecipient, permit2.permit.permitted.token, permit2.permit.permitted.amount);
     }
