@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {Permit2Batch, UsesPermit2} from "./UsesPermit2.sol";
-import {IOrders} from "./IOrders.sol";
+import {IOrders} from "./interfaces/IOrders.sol";
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
 abstract contract OrderDestination is IOrders, UsesPermit2 {

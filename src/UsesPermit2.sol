@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {IOrders} from "./IOrders.sol";
+import {IOrders} from "./interfaces/IOrders.sol";
 
 /// @param permit - the permit2 batch token transfer details. includes a `deadline` and an unordered `nonce`.
 /// @param signer - the signer of the permit2 info; the owner of the tokens.

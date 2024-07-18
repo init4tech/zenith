@@ -4,9 +4,8 @@ pragma solidity ^0.8.24;
 import {Test, console2} from "forge-std/Test.sol";
 import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-
 import {RollupOrders, OrderOrigin} from "../src/Orders.sol";
-import {IOrders} from "../src/IOrders.sol";
+import {IOrders} from "../src/interfaces/IOrders.sol";
 
 contract OrdersTest is Test {
     RollupOrders public target;
