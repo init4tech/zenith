@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Passage} from "./Passage.sol";
-
 contract Zenith {
     /// @notice The address that is allowed to set/remove sequencers.
     address public immutable sequencerAdmin;

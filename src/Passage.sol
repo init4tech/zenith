@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
+import {UsesPermit2, Permit2} from "./permit2/UsesPermit2.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import {UsesPermit2, Permit2} from "./UsesPermit2.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup.
 contract Passage is UsesPermit2 {
