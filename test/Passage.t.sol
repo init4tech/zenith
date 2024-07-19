@@ -21,8 +21,6 @@ contract PassageTest is Test {
     uint256 gas = 10_000_000;
     uint256 maxFeePerGas = 50;
 
-    uint256 tokenAdminKey = 123;
-
     event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
     event EnterToken(
