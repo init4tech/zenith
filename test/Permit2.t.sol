@@ -20,7 +20,6 @@ import {Test, console2} from "forge-std/Test.sol";
 
 contract SharedPermit2Test is Permit2Helpers {
     Permit2Stub permit2Contract;
-    BatchPermit2Stub permit2BatchContract;
 
     /// @notice the address signing the Permit messages and its pk
     uint256 ownerKey = 123;
@@ -31,9 +30,6 @@ contract SharedPermit2Test is Permit2Helpers {
     // single permit
     UsesPermit2.Permit2 permit2;
     ISignatureTransfer.SignatureTransferDetails transferDetails;
-    // batch permit
-    UsesPermit2.Permit2Batch permit2Batch;
-    ISignatureTransfer.SignatureTransferDetails[] transferDetailsBatch;
 
     function _setUpPermit2(address token, uint256 amount) internal {
         vm.label(owner, "owner");
@@ -42,16 +38,14 @@ contract SharedPermit2Test is Permit2Helpers {
         permit2Contract = new Permit2Stub();
         vm.label(address(permit2Contract), "permit2");
 
-        // deploy batch permit2
-        permit2BatchContract = new BatchPermit2Stub();
-        vm.label(address(permit2BatchContract), "permit2Batch");
-
-        // approve permit2 & batch permit2
+        // approve permit2
         vm.prank(owner);
         TestERC20(token).approve(address(permit2Contract), amount * 10000);
-        vm.prank(owner);
-        TestERC20(token).approve(address(permit2BatchContract), amount * 10000);
 
+        _setupSinglePermit(token, amount);
+    }
+
+    function _setupSinglePermit(address token, uint256 amount) internal {
         // create a single permit with generic details
         permit2.permit = ISignatureTransfer.PermitTransferFrom({
             permitted: ISignatureTransfer.TokenPermissions({token: token, amount: amount}),
@@ -59,12 +53,6 @@ contract SharedPermit2Test is Permit2Helpers {
             deadline: block.timestamp
         });
         permit2.owner = owner;
-
-        // create a batch permit with generic details
-        permit2Batch.permit.permitted.push(ISignatureTransfer.TokenPermissions({token: token, amount: amount}));
-        permit2Batch.permit.nonce = 0;
-        permit2Batch.permit.deadline = block.timestamp;
-        permit2Batch.owner = owner;
     }
 }
 
@@ -199,7 +187,43 @@ contract RollupPassagePermit2Test is SharedPermit2Test {
     }
 }
 
-contract OrderOriginPermit2Test is SharedPermit2Test {
+contract Permit2BatchTest is Permit2Helpers {
+    BatchPermit2Stub permit2Contract;
+
+    /// @notice the address signing the Permit messages and its pk
+    uint256 ownerKey = 123;
+    address owner = vm.addr(ownerKey);
+
+    // permit consts
+    UsesPermit2.Witness witness;
+    // batch permit
+    UsesPermit2.Permit2Batch permit2;
+    ISignatureTransfer.SignatureTransferDetails[] transferDetails;
+
+    function _setUpPermit2(address token, uint256 amount) internal {
+        vm.label(owner, "owner");
+
+        // deploy batch permit2
+        permit2Contract = new BatchPermit2Stub();
+        vm.label(address(permit2Contract), "permit2");
+
+        // approve batch permit2
+        vm.prank(owner);
+        TestERC20(token).approve(address(permit2Contract), amount * 10000);
+
+        _setupBatchPermit(token, amount);
+    }
+
+    function _setupBatchPermit(address token, uint256 amount) internal {
+        // create a batch permit with generic details
+        permit2.permit.permitted.push(ISignatureTransfer.TokenPermissions({token: token, amount: amount}));
+        permit2.permit.nonce = 0;
+        permit2.permit.deadline = block.timestamp;
+        permit2.owner = owner;
+    }
+}
+
+contract OrderOriginPermit2Test is Permit2BatchTest {
     RollupOrders public target;
 
     IOrders.Input[] public inputs;
@@ -229,7 +253,7 @@ contract OrderOriginPermit2Test is SharedPermit2Test {
         _setUpPermit2(token, amount);
 
         // deploy Orders contract
-        target = new RollupOrders(address(permit2BatchContract));
+        target = new RollupOrders(address(permit2Contract));
         vm.label(address(target), "orders");
 
         // setup Order Inputs/Outputs
@@ -243,12 +267,10 @@ contract OrderOriginPermit2Test is SharedPermit2Test {
         witness = target.outputWitness(outputs);
 
         // sign permit + witness
-        permit2.signature = signPermit(ownerKey, address(target), permit2Batch.permit, witness);
+        permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
 
         // construct transfer details
-        transferDetailsBatch.push(
-            ISignatureTransfer.SignatureTransferDetails({to: tokenRecipient, requestedAmount: amount})
-        );
+        transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: tokenRecipient, requestedAmount: amount}));
     }
 
     function test_initiatePermit2() public {
@@ -256,19 +278,19 @@ contract OrderOriginPermit2Test is SharedPermit2Test {
         vm.expectEmit();
         emit Order(deadline, inputs, outputs);
         vm.expectCall(
-            address(permit2BatchContract),
+            address(permit2Contract),
             abi.encodeWithSelector(
                 BatchPermit2Stub.permitWitnessTransferFrom.selector,
-                permit2Batch.permit,
-                transferDetailsBatch,
+                permit2.permit,
+                transferDetails,
                 owner,
                 witness.witnessHash,
                 witness.witnessTypeString,
-                permit2Batch.signature
+                permit2.signature
             )
         );
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, tokenRecipient, amount));
-        target.initiatePermit2(tokenRecipient, outputs, permit2Batch);
+        target.initiatePermit2(tokenRecipient, outputs, permit2);
     }
 
     // input multiple ERC20s
@@ -277,35 +299,35 @@ contract OrderOriginPermit2Test is SharedPermit2Test {
         address token2 = address(new TestERC20("bye", "BYE"));
         TestERC20(token2).mint(owner, amount * 10000);
         vm.prank(owner);
-        TestERC20(token2).approve(address(permit2BatchContract), amount * 10000);
+        TestERC20(token2).approve(address(permit2Contract), amount * 10000);
 
         // add second token input
         inputs.push(IOrders.Input(token2, amount * 2));
 
         // add TokenPermissions
-        permit2Batch.permit.permitted.push(ISignatureTransfer.TokenPermissions({token: token2, amount: amount * 2}));
+        permit2.permit.permitted.push(ISignatureTransfer.TokenPermissions({token: token2, amount: amount * 2}));
 
         // add TransferDetails
-        transferDetailsBatch.push(
+        transferDetails.push(
             ISignatureTransfer.SignatureTransferDetails({to: tokenRecipient, requestedAmount: amount * 2})
         );
 
         // re-sign new permit
-        permit2.signature = signPermit(ownerKey, address(target), permit2Batch.permit, witness);
+        permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
 
         // expect Order event is emitted, ERC20 is transferred
         vm.expectEmit();
         emit Order(deadline, inputs, outputs);
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, tokenRecipient, amount));
         vm.expectCall(token2, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, tokenRecipient, amount * 2));
-        target.initiatePermit2(tokenRecipient, outputs, permit2Batch);
+        target.initiatePermit2(tokenRecipient, outputs, permit2);
     }
 
     function test_fillPermit2() public {
         vm.expectEmit();
         emit Filled(outputs);
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, recipient, amount));
-        target.fillPermit2(outputs, permit2Batch);
+        target.fillPermit2(outputs, permit2);
     }
 
     function test_fillPermit2_multi() public {
@@ -313,27 +335,25 @@ contract OrderOriginPermit2Test is SharedPermit2Test {
         address token2 = address(new TestERC20("bye", "BYE"));
         TestERC20(token2).mint(owner, amount * 10000);
         vm.prank(owner);
-        TestERC20(token2).approve(address(permit2BatchContract), amount * 10000);
+        TestERC20(token2).approve(address(permit2Contract), amount * 10000);
 
         // add second token output
         outputs.push(IOrders.Output(token2, amount * 2, recipient, chainId));
 
         // add TokenPermissions
-        permit2Batch.permit.permitted.push(ISignatureTransfer.TokenPermissions({token: token2, amount: amount * 2}));
+        permit2.permit.permitted.push(ISignatureTransfer.TokenPermissions({token: token2, amount: amount * 2}));
 
         // add TransferDetails
-        transferDetailsBatch.push(
-            ISignatureTransfer.SignatureTransferDetails({to: recipient, requestedAmount: amount * 2})
-        );
+        transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: recipient, requestedAmount: amount * 2}));
 
         // re-sign new permit
-        permit2.signature = signPermit(ownerKey, address(target), permit2Batch.permit, witness);
+        permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
 
         // expect Filled event is emitted, ERC20 is transferred
         vm.expectEmit();
         emit Filled(outputs);
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, recipient, amount));
         vm.expectCall(token2, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, recipient, amount * 2));
-        target.fillPermit2(outputs, permit2Batch);
+        target.fillPermit2(outputs, permit2);
     }
 }
