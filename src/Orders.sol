@@ -24,20 +24,6 @@ abstract contract OrderDestination is IOrders, OrdersPermit2 {
         emit Filled(outputs);
     }
 
-    /// @notice Transfer the Order Outputs to their recipients.
-    function _transferOutputs(Output[] memory outputs) internal {
-        uint256 value = msg.value;
-        for (uint256 i; i < outputs.length; i++) {
-            if (outputs[i].token == address(0)) {
-                // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
-                value -= outputs[i].amount;
-                payable(outputs[i].recipient).transfer(outputs[i].amount);
-            } else {
-                IERC20(outputs[i].token).transferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
-            }
-        }
-    }
-
     /// @notice Fill any number of Order(s), by transferring their Output(s) via permit2 signed batch transfer.
     /// @dev Can only provide ERC20 tokens as Outputs.
     /// @dev Filler may aggregate multiple Outputs with the same (`chainId`, `recipient`, `token`) into a single Output with the summed `amount`.
@@ -56,6 +42,20 @@ abstract contract OrderDestination is IOrders, OrdersPermit2 {
 
         // emit
         emit Filled(outputs);
+    }
+
+    /// @notice Transfer the Order Outputs to their recipients.
+    function _transferOutputs(Output[] memory outputs) internal {
+        uint256 value = msg.value;
+        for (uint256 i; i < outputs.length; i++) {
+            if (outputs[i].token == address(0)) {
+                // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
+                value -= outputs[i].amount;
+                payable(outputs[i].recipient).transfer(outputs[i].amount);
+            } else {
+                IERC20(outputs[i].token).transferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
+            }
+        }
     }
 }
 
@@ -98,19 +98,6 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
         emit Order(deadline, inputs, outputs);
     }
 
-    /// @notice Transfer the Order inputs to this contract, where they can be collected by the Order filler via `sweep`.
-    function _transferInputs(Input[] memory inputs) internal {
-        uint256 value = msg.value;
-        for (uint256 i; i < inputs.length; i++) {
-            if (inputs[i].token == address(0)) {
-                // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
-                value -= inputs[i].amount;
-            } else {
-                IERC20(inputs[i].token).transferFrom(msg.sender, address(this), inputs[i].amount);
-            }
-        }
-    }
-
     /// @notice Initiate an Order, transferring Input tokens to the Filler via permit2 signed batch transfer.
     /// @dev Can only provide ERC20 tokens as Inputs.
     /// @dev the permit2 signer is the swapper providing the Input tokens in exchange for the Outputs.
@@ -141,7 +128,7 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
     /// @param token - The token to transfer.
     /// @custom:emits Sweep
     /// @custom:reverts OnlyBuilder if called by non-block builder
-    function sweep(address recipient, address token) public {
+    function sweep(address recipient, address token) external {
         // send ETH or tokens
         uint256 balance;
         if (token == address(0)) {
@@ -152,6 +139,19 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
             IERC20(token).transfer(recipient, balance);
         }
         emit Sweep(recipient, token, balance);
+    }
+
+    /// @notice Transfer the Order inputs to this contract, where they can be collected by the Order filler via `sweep`.
+    function _transferInputs(Input[] memory inputs) internal {
+        uint256 value = msg.value;
+        for (uint256 i; i < inputs.length; i++) {
+            if (inputs[i].token == address(0)) {
+                // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
+                value -= inputs[i].amount;
+            } else {
+                IERC20(inputs[i].token).transferFrom(msg.sender, address(this), inputs[i].amount);
+            }
+        }
     }
 }
 

@@ -106,19 +106,12 @@ contract Passage is PassagePermit2 {
     /// @param rollupRecipient - The recipient of tokens on the rollup.
     /// @param permit2 - The Permit2 information, including token & amount.
     function enterTokenPermit2(uint256 rollupChainId, address rollupRecipient, PassagePermit2.Permit2 calldata permit2)
-        public
+        external
     {
         // transfer tokens to this contract via permit2
         _permitWitnessTransferFrom(enterWitness(rollupChainId, rollupRecipient), permit2);
         // check and emit
         _enterToken(rollupChainId, rollupRecipient, permit2.permit.permitted.token, permit2.permit.permitted.amount);
-    }
-
-    /// @notice Shared functionality for tokens entering rollup.
-    function _enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) internal {
-        if (amount == 0) return;
-        if (!canEnter[token]) revert DisallowedEnter(token);
-        emit EnterToken(rollupChainId, rollupRecipient, token, amount);
     }
 
     /// @notice Alow/Disallow a given ERC20 token to enter the rollup.
@@ -137,6 +130,13 @@ contract Passage is PassagePermit2 {
             IERC20(token).transfer(recipient, amount);
         }
         emit Withdrawal(token, recipient, amount);
+    }
+
+    /// @notice Shared functionality for tokens entering rollup.
+    function _enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) internal {
+        if (amount == 0) return;
+        if (!canEnter[token]) revert DisallowedEnter(token);
+        emit EnterToken(rollupChainId, rollupRecipient, token, amount);
     }
 
     /// @notice Helper to configure ERC20 enters on deploy & via admin function
@@ -184,7 +184,7 @@ contract RollupPassage is PassagePermit2 {
     /// @param token - The rollup address of the token exiting the rollup.
     /// @param amount - The amount of tokens exiting the rollup.
     /// @custom:emits ExitToken
-    function exitToken(address hostRecipient, address token, uint256 amount) public {
+    function exitToken(address hostRecipient, address token, uint256 amount) external {
         // transfer tokens to this contract
         IERC20(token).transferFrom(msg.sender, address(this), amount);
         // burn and emit
@@ -195,7 +195,7 @@ contract RollupPassage is PassagePermit2 {
     /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
     /// @param permit2 - The Permit2 information, including token & amount.
     /// @custom:emits ExitToken
-    function exitTokenPermit2(address hostRecipient, PassagePermit2.Permit2 calldata permit2) public {
+    function exitTokenPermit2(address hostRecipient, PassagePermit2.Permit2 calldata permit2) external {
         // transfer tokens to this contract
         _permitWitnessTransferFrom(exitWitness(hostRecipient), permit2);
         // burn and emit
