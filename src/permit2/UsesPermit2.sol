@@ -5,6 +5,24 @@ import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol"
 import {IOrders} from "../interfaces/IOrders.sol";
 
 abstract contract UsesPermit2 {
+    /// @param permit - the permit2 single token transfer details. includes a `deadline` and an unordered `nonce`.
+    /// @param signer - the signer of the permit2 info; the owner of the tokens.
+    /// @param signature - the signature over the permit + witness.
+    struct Permit2 {
+        ISignatureTransfer.PermitTransferFrom permit;
+        address owner;
+        bytes signature;
+    }
+
+    /// @param permit - the permit2 batch token transfer details. includes a `deadline` and an unordered `nonce`.
+    /// @param signer - the signer of the permit2 info; the owner of the tokens.
+    /// @param signature - the signature over the permit + witness.
+    struct Permit2Batch {
+        ISignatureTransfer.PermitBatchTransferFrom permit;
+        address owner;
+        bytes signature;
+    }
+
     /// @notice Struct to hold the pre-hashed witness field and the witness type string.
     struct Witness {
         bytes32 witnessHash;
@@ -26,17 +44,21 @@ abstract contract OrdersPermit2 is UsesPermit2 {
     bytes32 constant _OUTPUT_TYPEHASH =
         keccak256("Output(address token,uint256 amount,address recipient,uint32 chainId)");
 
-    /// @param permit - the permit2 batch token transfer details. includes a `deadline` and an unordered `nonce`.
-    /// @param signer - the signer of the permit2 info; the owner of the tokens.
-    /// @param signature - the signature over the permit + witness.
-    struct Permit2Batch {
-        ISignatureTransfer.PermitBatchTransferFrom permit;
-        address owner;
-        bytes signature;
-    }
-
     /// @notice Thrown when a signed Output does not match the corresponding TokenPermissions.
     error OutputMismatch();
+
+    /// @notice Encode the Output array according to EIP-712 for use as a permit2 witness.
+    /// @param outputs - the Outputs to encode.
+    /// @return _witness - the encoded witness field.
+    function outputWitness(IOrders.Output[] memory outputs) public pure returns (Witness memory _witness) {
+        uint256 num = outputs.length;
+        bytes32[] memory hashes = new bytes32[](num);
+        for (uint256 i = 0; i < num; ++i) {
+            hashes[i] = keccak256(abi.encode(_OUTPUT_TYPEHASH, outputs[i]));
+        }
+        _witness.witnessHash = keccak256(abi.encodePacked(hashes));
+        _witness.witnessTypeString = _OUTPUT_WITNESS_TYPESTRING;
+    }
 
     /// @notice Transfer a batch of tokens using permit2.
     /// @param _witness - the hashed witness and its typestring.
@@ -55,19 +77,6 @@ abstract contract OrdersPermit2 is UsesPermit2 {
             _witness.witnessTypeString,
             permit2.signature
         );
-    }
-
-    /// @notice Encode the Output array according to EIP-712 for use as a permit2 witness.
-    /// @param outputs - the Outputs to encode.
-    /// @return _witness - the encoded witness field.
-    function outputsWitness(IOrders.Output[] memory outputs) public pure returns (Witness memory _witness) {
-        uint256 num = outputs.length;
-        bytes32[] memory hashes = new bytes32[](num);
-        for (uint256 i = 0; i < num; ++i) {
-            hashes[i] = keccak256(abi.encode(_OUTPUT_TYPEHASH, outputs[i]));
-        }
-        _witness.witnessHash = keccak256(abi.encodePacked(hashes));
-        _witness.witnessTypeString = _OUTPUT_WITNESS_TYPESTRING;
     }
 
     /// @notice transform Output and TokenPermissions structs to TransferDetails structs, for passing to permit2.
@@ -142,29 +151,6 @@ abstract contract PassagePermit2 is UsesPermit2 {
         address hostRecipient;
     }
 
-    /// @param permit - the permit2 single token transfer details. includes a `deadline` and an unordered `nonce`.
-    /// @param signer - the signer of the permit2 info; the owner of the tokens.
-    /// @param signature - the signature over the permit + witness.
-    struct Permit2 {
-        ISignatureTransfer.PermitTransferFrom permit;
-        address owner;
-        bytes signature;
-    }
-
-    /// @notice Transfer tokens using permit2.
-    /// @param _witness - the hashed witness and its typestring.
-    /// @param permit2 - the Permit2 information.
-    function _permitWitnessTransferFrom(Witness memory _witness, Permit2 calldata permit2) internal {
-        ISignatureTransfer(permit2Contract).permitWitnessTransferFrom(
-            permit2.permit,
-            _passageTransferDetails(permit2.permit.permitted),
-            permit2.owner,
-            _witness.witnessHash,
-            _witness.witnessTypeString,
-            permit2.signature
-        );
-    }
-
     /// @notice Encode & hash the rollupChainId and rollupRecipient for use as a permit2 witness.
     /// @return _witness - the hashed witness and its typestring.
     function enterWitness(uint256 rollupChainId, address rollupRecipient)
@@ -184,16 +170,30 @@ abstract contract PassagePermit2 is UsesPermit2 {
         _witness.witnessTypeString = _EXIT_WITNESS_TYPESTRING;
     }
 
-    /// @notice transform TokenPermissions to TransferDetails, for passing to permit2.
-    /// @dev always transfers the full permitted amount to address(this).
-    /// @param permitted - the TokenPermissions to transform.
+    /// @notice Transfer tokens using permit2.
+    /// @param _witness - the hashed witness and its typestring.
+    /// @param permit2 - the Permit2 information.
+    function _permitWitnessTransferFrom(Witness memory _witness, Permit2 calldata permit2) internal {
+        ISignatureTransfer(permit2Contract).permitWitnessTransferFrom(
+            permit2.permit,
+            _selfTransferDetails(permit2.permit.permitted.amount),
+            permit2.owner,
+            _witness.witnessHash,
+            _witness.witnessTypeString,
+            permit2.signature
+        );
+    }
+
+    /// @notice Construct TransferDetails transferring a balance to this contract, for passing to permit2.
+    /// @dev always transfers the full amount to address(this).
+    /// @param amount - the amount to transfer to this contract.
     /// @return transferDetails - the SignatureTransferDetails generated.
-    function _passageTransferDetails(ISignatureTransfer.TokenPermissions calldata permitted)
+    function _selfTransferDetails(uint256 amount)
         internal
         view
         returns (ISignatureTransfer.SignatureTransferDetails memory transferDetails)
     {
         transferDetails.to = address(this);
-        transferDetails.requestedAmount = permitted.amount;
+        transferDetails.requestedAmount = amount;
     }
 }

@@ -51,7 +51,7 @@ abstract contract OrderDestination is IOrders, OrdersPermit2 {
     function fillPermit2(Output[] memory outputs, OrdersPermit2.Permit2Batch calldata permit2) external {
         // transfer all tokens to the Output recipients via permit2 (includes check on nonce & deadline)
         _permitWitnessTransferFrom(
-            outputsWitness(outputs), _fillTransferDetails(outputs, permit2.permit.permitted), permit2
+            outputWitness(outputs), _fillTransferDetails(outputs, permit2.permit.permitted), permit2
         );
 
         // emit
@@ -126,7 +126,7 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
     ) external {
         // transfer all tokens to the tokenRecipient via permit2 (includes check on nonce & deadline)
         _permitWitnessTransferFrom(
-            outputsWitness(outputs), _initiateTransferDetails(tokenRecipient, permit2.permit.permitted), permit2
+            outputWitness(outputs), _initiateTransferDetails(tokenRecipient, permit2.permit.permitted), permit2
         );
 
         // emit
