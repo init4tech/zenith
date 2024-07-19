@@ -7,40 +7,17 @@ import {UsesPermit2} from "../src/permit2/UsesPermit2.sol";
 
 // Permit2 deps
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {PermitHash} from "permit2/src/libraries/PermitHash.sol";
 
 // other test utils
-import {Permit2Helpers, Permit2Stub, TestERC20} from "./Helpers.t.sol";
+import {Permit2Helpers, ISinglePermit, TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
 contract SharedPermit2Test is Permit2Helpers {
-    Permit2Stub permit2Contract;
-
-    /// @notice the address signing the Permit messages and its pk
-    uint256 ownerKey = 123;
-    address owner = vm.addr(ownerKey);
-
-    // permit consts
-    UsesPermit2.Witness witness;
     // single permit
     UsesPermit2.Permit2 permit2;
     ISignatureTransfer.SignatureTransferDetails transferDetails;
-
-    function _setUpPermit2(address token, uint256 amount) internal {
-        vm.label(owner, "owner");
-
-        // deploy permit2
-        permit2Contract = new Permit2Stub();
-        vm.label(address(permit2Contract), "permit2");
-
-        // approve permit2
-        vm.prank(owner);
-        TestERC20(token).approve(address(permit2Contract), amount * 10000);
-
-        _setupSinglePermit(token, amount);
-    }
 
     function _setupSinglePermit(address token, uint256 amount) internal {
         // create a single permit with generic details
@@ -67,6 +44,8 @@ contract PassagePermit2Test is SharedPermit2Test {
     );
 
     function setUp() public {
+        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
+
         // deploy token
         token = address(new TestERC20("hi", "HI"));
         TestERC20(token).mint(owner, amount * 10000);
@@ -77,6 +56,7 @@ contract PassagePermit2Test is SharedPermit2Test {
 
         // setup permit2 contract & permit details
         _setUpPermit2(token, amount);
+        _setupSinglePermit(token, amount);
 
         // deploy Passage
         target = new Passage(block.chainid + 1, address(this), initialEnterTokens, address(permit2Contract));
@@ -98,7 +78,7 @@ contract PassagePermit2Test is SharedPermit2Test {
         vm.expectCall(
             address(permit2Contract),
             abi.encodeWithSelector(
-                Permit2Stub.permitWitnessTransferFrom.selector,
+                ISinglePermit.permitWitnessTransferFrom.selector,
                 permit2.permit,
                 transferDetails,
                 owner,
@@ -142,12 +122,15 @@ contract RollupPassagePermit2Test is SharedPermit2Test {
     event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
 
     function setUp() public {
+        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
+
         // deploy token & approve permit2
         token = address(new TestERC20("hi", "HI"));
         TestERC20(token).mint(owner, amount * 10000);
 
         // setup permit2 contract & permit details
         _setUpPermit2(token, amount);
+        _setupSinglePermit(token, amount);
 
         // deploy Passage
         target = new RollupPassage(address(permit2Contract));
@@ -169,7 +152,7 @@ contract RollupPassagePermit2Test is SharedPermit2Test {
         vm.expectCall(
             address(permit2Contract),
             abi.encodeWithSelector(
-                Permit2Stub.permitWitnessTransferFrom.selector,
+                ISinglePermit.permitWitnessTransferFrom.selector,
                 permit2.permit,
                 transferDetails,
                 owner,

@@ -8,40 +8,16 @@ import {UsesPermit2} from "../src/permit2/UsesPermit2.sol";
 
 // Permit2 deps
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-import {PermitHash} from "permit2/src/libraries/PermitHash.sol";
 
 // other test utils
-import {Permit2Helpers, BatchPermit2Stub, TestERC20} from "./Helpers.t.sol";
+import {Permit2Helpers, IBatchPermit, TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
 contract Permit2BatchTest is Permit2Helpers {
-    BatchPermit2Stub permit2Contract;
-
-    /// @notice the address signing the Permit messages and its pk
-    uint256 ownerKey = 123;
-    address owner = vm.addr(ownerKey);
-
-    // permit consts
-    UsesPermit2.Witness witness;
     // batch permit
     UsesPermit2.Permit2Batch permit2;
     ISignatureTransfer.SignatureTransferDetails[] transferDetails;
-
-    function _setUpPermit2(address token, uint256 amount) internal {
-        vm.label(owner, "owner");
-
-        // deploy batch permit2
-        permit2Contract = new BatchPermit2Stub();
-        vm.label(address(permit2Contract), "permit2");
-
-        // approve batch permit2
-        vm.prank(owner);
-        TestERC20(token).approve(address(permit2Contract), amount * 10000);
-
-        _setupBatchPermit(token, amount);
-    }
 
     function _setupBatchPermit(address token, uint256 amount) internal {
         // create a batch permit with generic details
@@ -73,6 +49,7 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
     event Filled(IOrders.Output[] outputs);
 
     function setUp() public {
+        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
         // deploy token
         token = address(new TestERC20("hi", "HI"));
         TestERC20(token).mint(owner, amount * 10000);
@@ -80,6 +57,7 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
 
         // setup permit2 contract & permit details
         _setUpPermit2(token, amount);
+        _setupBatchPermit(token, amount);
 
         // deploy Orders contract
         target = new RollupOrders(address(permit2Contract));
@@ -105,11 +83,11 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
 
         // expect Order event is initiated, ERC20 is transferred
         vm.expectEmit();
-        emit Order(deadline, inputs, outputs);
+        emit Order(permit2.permit.deadline, inputs, outputs);
         vm.expectCall(
             address(permit2Contract),
             abi.encodeWithSelector(
-                BatchPermit2Stub.permitWitnessTransferFrom.selector,
+                IBatchPermit.permitWitnessTransferFrom.selector,
                 permit2.permit,
                 transferDetails,
                 owner,
@@ -149,11 +127,11 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
 
         // expect Order event is emitted, ERC20 is transferred
         vm.expectEmit();
-        emit Order(deadline, inputs, outputs);
+        emit Order(permit2.permit.deadline, inputs, outputs);
         vm.expectCall(
             address(permit2Contract),
             abi.encodeWithSelector(
-                BatchPermit2Stub.permitWitnessTransferFrom.selector,
+                IBatchPermit.permitWitnessTransferFrom.selector,
                 permit2.permit,
                 transferDetails,
                 owner,
@@ -176,7 +154,7 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
         vm.expectCall(
             address(permit2Contract),
             abi.encodeWithSelector(
-                BatchPermit2Stub.permitWitnessTransferFrom.selector,
+                IBatchPermit.permitWitnessTransferFrom.selector,
                 permit2.permit,
                 transferDetails,
                 owner,
@@ -218,7 +196,7 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
         vm.expectCall(
             address(permit2Contract),
             abi.encodeWithSelector(
-                BatchPermit2Stub.permitWitnessTransferFrom.selector,
+                IBatchPermit.permitWitnessTransferFrom.selector,
                 permit2.permit,
                 transferDetails,
                 owner,
