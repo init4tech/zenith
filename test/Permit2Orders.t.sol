@@ -97,12 +97,12 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
 
         // sign permit + witness
         permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
-
-        // construct transfer details
-        transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: tokenRecipient, requestedAmount: amount}));
     }
 
     function test_initiatePermit2() public {
+        // construct transfer details
+        transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: tokenRecipient, requestedAmount: amount}));
+
         // expect Order event is initiated, ERC20 is transferred
         vm.expectEmit();
         emit Order(deadline, inputs, outputs);
@@ -124,6 +124,9 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
 
     // input multiple ERC20s
     function test_initiatePermit2_multi() public {
+        // construct transfer details
+        transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: tokenRecipient, requestedAmount: amount}));
+
         // setup second token
         address token2 = address(new TestERC20("bye", "BYE"));
         TestERC20(token2).mint(owner, amount * 10000);
@@ -147,19 +150,49 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
         // expect Order event is emitted, ERC20 is transferred
         vm.expectEmit();
         emit Order(deadline, inputs, outputs);
+        vm.expectCall(
+            address(permit2Contract),
+            abi.encodeWithSelector(
+                BatchPermit2Stub.permitWitnessTransferFrom.selector,
+                permit2.permit,
+                transferDetails,
+                owner,
+                witness.witnessHash,
+                witness.witnessTypeString,
+                permit2.signature
+            )
+        );
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, tokenRecipient, amount));
         vm.expectCall(token2, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, tokenRecipient, amount * 2));
         target.initiatePermit2(tokenRecipient, outputs, permit2);
     }
 
     function test_fillPermit2() public {
+        // construct transfer details
+        transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: recipient, requestedAmount: amount}));
+
         vm.expectEmit();
         emit Filled(outputs);
+        vm.expectCall(
+            address(permit2Contract),
+            abi.encodeWithSelector(
+                BatchPermit2Stub.permitWitnessTransferFrom.selector,
+                permit2.permit,
+                transferDetails,
+                owner,
+                witness.witnessHash,
+                witness.witnessTypeString,
+                permit2.signature
+            )
+        );
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, recipient, amount));
         target.fillPermit2(outputs, permit2);
     }
 
     function test_fillPermit2_multi() public {
+        // construct transfer details
+        transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: recipient, requestedAmount: amount}));
+
         // setup second token
         address token2 = address(new TestERC20("bye", "BYE"));
         TestERC20(token2).mint(owner, amount * 10000);
@@ -176,11 +209,24 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
         transferDetails.push(ISignatureTransfer.SignatureTransferDetails({to: recipient, requestedAmount: amount * 2}));
 
         // re-sign new permit
+        witness = target.outputWitness(outputs);
         permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
 
         // expect Filled event is emitted, ERC20 is transferred
         vm.expectEmit();
         emit Filled(outputs);
+        vm.expectCall(
+            address(permit2Contract),
+            abi.encodeWithSelector(
+                BatchPermit2Stub.permitWitnessTransferFrom.selector,
+                permit2.permit,
+                transferDetails,
+                owner,
+                witness.witnessHash,
+                witness.witnessTypeString,
+                permit2.signature
+            )
+        );
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, recipient, amount));
         vm.expectCall(token2, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, recipient, amount * 2));
         target.fillPermit2(outputs, permit2);
