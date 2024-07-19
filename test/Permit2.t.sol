@@ -18,9 +18,6 @@ import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
-// TODO: test that witness encoding is valid
-// TODO: fix gas metering in the tests
-
 contract SharedPermit2Test is Permit2Helpers {
     Permit2Stub permit2Contract;
     BatchPermit2Stub permit2BatchContract;
