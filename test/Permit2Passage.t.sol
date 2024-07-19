@@ -10,7 +10,7 @@ import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol"
 import {PermitHash} from "permit2/src/libraries/PermitHash.sol";
 
 // other test utils
-import {Permit2Helpers, Permit2Stub, BatchPermit2Stub, TestERC20} from "./Helpers.t.sol";
+import {Permit2Helpers, Permit2Stub, TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Test, console2} from "forge-std/Test.sol";
