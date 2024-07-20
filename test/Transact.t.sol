@@ -35,7 +35,7 @@ contract TransactTest is Test {
 
     function setUp() public {
         // deploy target
-        passage = new Passage(block.chainid + 1, address(this), new address[](0));
+        passage = new Passage(block.chainid + 1, address(this), new address[](0), address(0));
         target = new Transactor(block.chainid + 1, address(this), passage, gas * 6, gas);
     }
 

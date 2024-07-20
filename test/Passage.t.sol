@@ -21,8 +21,6 @@ contract PassageTest is Test {
     uint256 gas = 10_000_000;
     uint256 maxFeePerGas = 50;
 
-    uint256 tokenAdminKey = 123;
-
     event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
     event EnterToken(
@@ -51,7 +49,7 @@ contract PassageTest is Test {
         // deploy target
         address[] memory initialEnterTokens = new address[](1);
         initialEnterTokens[0] = token;
-        target = new Passage(block.chainid + 1, address(this), initialEnterTokens);
+        target = new Passage(block.chainid + 1, address(this), initialEnterTokens, address(0));
         TestERC20(token).approve(address(target), amount * 10000);
 
         // deploy token two, don't configure
@@ -173,7 +171,7 @@ contract RollupPassageTest is Test {
 
     function setUp() public {
         // deploy target
-        target = new RollupPassage();
+        target = new RollupPassage(address(0));
 
         // deploy token
         token = address(new TestERC20("hi", "HI"));

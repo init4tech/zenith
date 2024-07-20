@@ -78,7 +78,7 @@ contract Transactor {
         uint256 value,
         uint256 gas,
         uint256 maxFeePerGas
-    ) public payable {
+    ) external payable {
         enterTransact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
     }
 

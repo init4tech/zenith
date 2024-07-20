@@ -9,26 +9,27 @@ import {HostOrders, RollupOrders} from "../src/Orders.sol";
 
 contract ZenithScript is Script {
     // deploy:
-    // forge script ZenithScript --sig "deploy(uint256,address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $SEQUENCER_AND_GAS_ADMIN_ADDRESS
+    // forge script ZenithScript --sig "deploy(uint256,address,address[],address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $SEQUENCER_AND_GAS_ADMIN_ADDRESS $PERMIT_2
     function deploy(
         uint256 defaultRollupChainId,
         address withdrawalAdmin,
         address[] memory initialEnterTokens,
-        address sequencerAndGasAdmin
+        address sequencerAndGasAdmin,
+        address permit2
     ) public returns (Zenith z, Passage p, Transactor t, HostOrders m) {
         vm.startBroadcast();
         z = new Zenith(sequencerAndGasAdmin);
-        p = new Passage(defaultRollupChainId, withdrawalAdmin, initialEnterTokens);
+        p = new Passage(defaultRollupChainId, withdrawalAdmin, initialEnterTokens, permit2);
         t = new Transactor(defaultRollupChainId, sequencerAndGasAdmin, p, 30_000_000, 5_000_000);
-        m = new HostOrders();
+        m = new HostOrders(permit2);
     }
 
     // deploy:
-    // forge script ZenithScript --sig "deployL2()" --rpc-url $L2_RPC_URL --private-key $PRIVATE_KEY --broadcast
-    function deployL2() public returns (RollupPassage p, RollupOrders m) {
+    // forge script ZenithScript --sig "deployL2(address)" --rpc-url $L2_RPC_URL --private-key $PRIVATE_KEY --broadcast $PERMIT_2
+    function deployL2(address permit2) public returns (RollupPassage p, RollupOrders m) {
         vm.startBroadcast();
-        p = new RollupPassage();
-        m = new RollupOrders();
+        p = new RollupPassage(permit2);
+        m = new RollupOrders(permit2);
     }
 
     // NOTE: script must be run using SequencerAdmin key
