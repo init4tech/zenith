@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+// test contracts
+import {IOrders} from "../src/orders/IOrders.sol";
+import {RollupOrders} from "../src/orders/Orders.sol";
+import {OrderOrigin} from "../src/orders/OrderOrigin.sol";
+// utils
 import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
-import {RollupOrders, OrderOrigin} from "../src/Orders.sol";
-import {IOrders} from "../src/interfaces/IOrders.sol";
+import {Test, console2} from "forge-std/Test.sol";
 
 contract OrdersTest is Test {
     RollupOrders public target;

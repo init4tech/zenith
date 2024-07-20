@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Script} from "forge-std/Script.sol";
+// deploy contracts
 import {Zenith} from "../src/Zenith.sol";
-import {Passage, RollupPassage} from "../src/Passage.sol";
 import {Transactor} from "../src/Transact.sol";
-import {HostOrders, RollupOrders} from "../src/Orders.sol";
+import {HostOrders, RollupOrders} from "../src/orders/Orders.sol";
+import {Passage} from "../src/passage/Passage.sol";
+import {RollupPassage} from "../src/passage/RollupPassage.sol";
+// utils
+import {Script} from "forge-std/Script.sol";
 
 contract ZenithScript is Script {
     // deploy:

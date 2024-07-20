@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
+// system contracts
 import {Zenith} from "../src/Zenith.sol";
-import {UsesPermit2} from "../src/permit2/UsesPermit2.sol";
-
-import {Test, console2} from "forge-std/Test.sol";
+import {UsesPermit2} from "../src/UsesPermit2.sol";
+// deps
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
+import {Test, console2} from "forge-std/Test.sol";
 
 contract TestERC20 is ERC20Burnable {
     constructor(string memory name_, string memory symbol_) ERC20(name_, symbol_) {}

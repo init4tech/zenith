@@ -2,14 +2,12 @@
 pragma solidity ^0.8.24;
 
 // test contracts
-import {Passage, RollupPassage} from "../src/Passage.sol";
-import {UsesPermit2} from "../src/permit2/UsesPermit2.sol";
-
-// Permit2 deps
-import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
-
-// other test utils
+import {Passage} from "../src/passage/Passage.sol";
+import {RollupPassage} from "../src/passage/RollupPassage.sol";
+import {UsesPermit2} from "../src/UsesPermit2.sol";
+// utils
 import {Permit2Helpers, ISinglePermit, TestERC20} from "./Helpers.t.sol";
+import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Test, console2} from "forge-std/Test.sol";
