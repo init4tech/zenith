@@ -1,11 +1,14 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {Passage, RollupPassage} from "../src/Passage.sol";
+// test contracts
+import {Passage} from "../src/passage/Passage.sol";
+import {RollupPassage} from "../src/passage/RollupPassage.sol";
+// utils
 import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {Test, console2} from "forge-std/Test.sol";
 
 contract PassageTest is Test {
     Passage public target;

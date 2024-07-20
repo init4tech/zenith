@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
-import {Passage} from "../src/Passage.sol";
+// test contracts
 import {Transactor} from "../src/Transact.sol";
+import {Passage} from "../src/passage/Passage.sol";
+// utils
+import {Test, console2} from "forge-std/Test.sol";
 
 contract TransactTest is Test {
     Passage public passage;

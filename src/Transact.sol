@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Passage} from "./Passage.sol";
+import {Passage} from "./passage/Passage.sol";
 
 /// @notice A contract deployed to Host chain that enables transactions from L1 to be sent on an L2.
 contract Transactor {

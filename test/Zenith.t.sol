@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.24;
 
-import {Test, console2} from "forge-std/Test.sol";
+// test contracts
 import {Zenith} from "../src/Zenith.sol";
+// utils
+import {Test, console2} from "forge-std/Test.sol";
 
 contract ZenithTest is Test {
     Zenith public target;
