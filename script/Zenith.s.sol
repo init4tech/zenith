@@ -14,7 +14,7 @@ contract ZenithScript is Script {
     // deploy:
     // forge script ZenithScript --sig "deploy(uint256,address,address[],address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $SEQUENCER_AND_GAS_ADMIN_ADDRESS $PERMIT_2
     function deploy(
-        uint256 defaultRollupChainId,
+        uint64 defaultRollupChainId,
         address withdrawalAdmin,
         address[] memory initialEnterTokens,
         address sequencerAndGasAdmin,
