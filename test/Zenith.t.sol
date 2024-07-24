@@ -33,7 +33,7 @@ contract ZenithTest is Test {
 
         // set default block values
         header.rollupChainId = uint64(block.chainid + 1);
-        header.hostBlockNumber = block.number;
+        header.hostBlockNumber = uint64(block.number);
         header.gasLimit = 30_000_000;
         header.rewardAddress = address(this);
         header.blockDataHash = keccak256(blockData);
