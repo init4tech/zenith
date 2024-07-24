@@ -22,7 +22,7 @@ contract Transactor {
 
     /// @notice The total gas used by `transact` so far in this block.
     /// rollupChainId => block number => `transasct` gasLimit used so far.
-    mapping(uint64 rollupChainId => mapping(uint256 blockNumber => uint256 transasct)) public transactGasUsed;
+    mapping(uint64 rollupChainId => mapping(uint64 blockNumber => uint256 transasct)) public transactGasUsed;
 
     /// @notice Emitted to send a special transaction to the rollup.
     event Transact(
@@ -119,9 +119,9 @@ contract Transactor {
         if (gas > perTransactGasLimit) revert PerTransactGasLimit();
 
         // ensure global transact gas limit is respected
-        uint256 gasUsed = transactGasUsed[rollupChainId][block.number];
+        uint256 gasUsed = transactGasUsed[rollupChainId][uint64(block.number)];
         if (gasUsed + gas > perBlockGasLimit) revert PerBlockTransactGasLimit();
-        transactGasUsed[rollupChainId][block.number] = gasUsed + gas;
+        transactGasUsed[rollupChainId][uint64(block.number)] = gasUsed + gas;
 
         // emit Transact event
         emit Transact(uint64(rollupChainId), msg.sender, to, data, value, gas, maxFeePerGas);

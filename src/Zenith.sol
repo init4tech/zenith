@@ -6,7 +6,7 @@ contract Zenith {
     address public immutable sequencerAdmin;
 
     /// @notice The block number at which the Zenith contract was deployed.
-    uint256 public deployBlockNumber;
+    uint64 public deployBlockNumber;
 
     /// @notice Block header information for the rollup block, signed by the sequencer.
     /// @param rollupChainId - the chainId of the rollup chain. Any chainId is accepted by the contract.
@@ -18,7 +18,7 @@ contract Zenith {
     ///                        without the Zenith contract needing to interact with raw transaction data (which may be provided via blobs or calldata).
     struct BlockHeader {
         uint64 rollupChainId;
-        uint256 hostBlockNumber;
+        uint64 hostBlockNumber;
         uint256 gasLimit;
         address rewardAddress;
         bytes32 blockDataHash;
@@ -26,7 +26,7 @@ contract Zenith {
 
     /// @notice The host block number that a block was last submitted at for a given rollup chainId.
     /// rollupChainId => host blockNumber that block was last submitted at
-    mapping(uint64 => uint256) public lastSubmittedAtBlock;
+    mapping(uint64 rollupChainId => uint64 hostBlockNumber) public lastSubmittedAtBlock;
 
     /// @notice Registry of permissioned sequencers.
     /// address => TRUE if it's a permissioned sequencer
@@ -66,7 +66,7 @@ contract Zenith {
 
     constructor(address _sequencerAdmin) {
         sequencerAdmin = _sequencerAdmin;
-        deployBlockNumber = block.number;
+        deployBlockNumber = uint64(block.number);
     }
 
     /// @notice Add a sequencer to the permissioned sequencer list.
@@ -115,7 +115,7 @@ contract Zenith {
 
         // assert this is the first rollup block submitted for this host block
         if (lastSubmittedAtBlock[header.rollupChainId] == block.number) revert OneRollupBlockPerHostBlock();
-        lastSubmittedAtBlock[header.rollupChainId] = block.number;
+        lastSubmittedAtBlock[header.rollupChainId] = uint64(block.number);
 
         // emit event
         emit BlockSubmitted(
