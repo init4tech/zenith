@@ -10,7 +10,7 @@ import {Test, console2} from "forge-std/Test.sol";
 contract TransactTest is Test {
     Passage public passage;
     Transactor public target;
-    uint256 chainId = 3;
+    uint64 chainId = 3;
     address recipient = address(0x123);
     uint256 amount = 200;
 
@@ -21,7 +21,7 @@ contract TransactTest is Test {
     uint256 maxFeePerGas = 50;
 
     event Transact(
-        uint256 indexed rollupChainId,
+        uint64 indexed rollupChainId,
         address indexed sender,
         address indexed to,
         bytes data,
@@ -33,16 +33,16 @@ contract TransactTest is Test {
     event GasConfigured(uint256 perBlock, uint256 perTransact);
 
     // Passage event
-    event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
+    event Enter(uint64 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
     function setUp() public {
         // deploy target
-        passage = new Passage(block.chainid + 1, address(this), new address[](0), address(0));
-        target = new Transactor(block.chainid + 1, address(this), passage, gas * 6, gas);
+        passage = new Passage(uint64(block.chainid + 1), address(this), new address[](0), address(0));
+        target = new Transactor(uint64(block.chainid + 1), address(this), passage, gas * 6, gas);
     }
 
     function test_setUp() public {
-        assertEq(target.defaultRollupChainId(), block.chainid + 1);
+        assertEq(target.defaultRollupChainId(), uint64(block.chainid + 1));
         assertEq(target.gasAdmin(), address(this));
         assertEq(address(target.passage()), address(passage));
         assertEq(target.perBlockGasLimit(), gas * 6);

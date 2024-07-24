@@ -19,7 +19,7 @@ contract ZenithTest is Test {
 
     event BlockSubmitted(
         address indexed sequencer,
-        uint256 indexed rollupChainId,
+        uint64 indexed rollupChainId,
         uint256 gasLimit,
         address rewardAddress,
         bytes32 blockDataHash
@@ -32,7 +32,7 @@ contract ZenithTest is Test {
         target.addSequencer(vm.addr(sequencerKey));
 
         // set default block values
-        header.rollupChainId = block.chainid + 1;
+        header.rollupChainId = uint64(block.chainid + 1);
         header.hostBlockNumber = block.number;
         header.gasLimit = 30_000_000;
         header.rewardAddress = address(this);
