@@ -23,6 +23,6 @@ interface IOrders {
         address recipient;
         /// @dev When emitted on the origin chain, the destination chain for the Output.
         ///      When emitted on the destination chain, the origin chain for the Order containing the Output.
-        uint32 chainId;
+        uint64 chainId;
     }
 }

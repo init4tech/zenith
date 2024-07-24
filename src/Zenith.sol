@@ -17,7 +17,7 @@ contract Zenith {
     ///                        this allows the sequencer to sign over finalized set of transactions,
     ///                        without the Zenith contract needing to interact with raw transaction data (which may be provided via blobs or calldata).
     struct BlockHeader {
-        uint256 rollupChainId;
+        uint64 rollupChainId;
         uint256 hostBlockNumber;
         uint256 gasLimit;
         address rewardAddress;
@@ -26,7 +26,7 @@ contract Zenith {
 
     /// @notice The host block number that a block was last submitted at for a given rollup chainId.
     /// rollupChainId => host blockNumber that block was last submitted at
-    mapping(uint256 => uint256) public lastSubmittedAtBlock;
+    mapping(uint64 => uint256) public lastSubmittedAtBlock;
 
     /// @notice Registry of permissioned sequencers.
     /// address => TRUE if it's a permissioned sequencer
@@ -55,7 +55,7 @@ contract Zenith {
     /// @dev including blockDataHash allows the sequencer to sign over finalized block data, without needing to calldatacopy the `blockData` param.
     event BlockSubmitted(
         address indexed sequencer,
-        uint256 indexed rollupChainId,
+        uint64 indexed rollupChainId,
         uint256 gasLimit,
         address rewardAddress,
         bytes32 blockDataHash

@@ -6,7 +6,7 @@ import {Passage} from "./passage/Passage.sol";
 /// @notice A contract deployed to Host chain that enables transactions from L1 to be sent on an L2.
 contract Transactor {
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
-    uint256 public immutable defaultRollupChainId;
+    uint64 public immutable defaultRollupChainId;
 
     /// @notice The address that is allowed to configure `transact` gas limits.
     address public immutable gasAdmin;
@@ -22,11 +22,11 @@ contract Transactor {
 
     /// @notice The total gas used by `transact` so far in this block.
     /// rollupChainId => block number => `transasct` gasLimit used so far.
-    mapping(uint256 => mapping(uint256 => uint256)) public transactGasUsed;
+    mapping(uint64 rollupChainId => mapping(uint256 blockNumber => uint256 transasct)) public transactGasUsed;
 
     /// @notice Emitted to send a special transaction to the rollup.
     event Transact(
-        uint256 indexed rollupChainId,
+        uint64 indexed rollupChainId,
         address indexed sender,
         address indexed to,
         bytes data,
@@ -50,7 +50,7 @@ contract Transactor {
     /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
     ///                                when entering the rollup via fallback() or receive() fns.
     constructor(
-        uint256 _defaultRollupChainId,
+        uint64 _defaultRollupChainId,
         address _gasAdmin,
         Passage _passage,
         uint256 _perBlockGasLimit,
@@ -72,7 +72,7 @@ contract Transactor {
     /// @dev Transaction is processed after normal rollup block execution.
     /// @dev See `enterTransact` for docs.
     function transact(
-        uint256 rollupChainId,
+        uint64 rollupChainId,
         address to,
         bytes calldata data,
         uint256 value,
@@ -102,7 +102,7 @@ contract Transactor {
     /// @param maxFeePerGas - The maximum fee per gas for the transaction (per EIP-1559).
     /// @custom:emits Transact indicating the transaction to mine on the rollup.
     function enterTransact(
-        uint256 rollupChainId,
+        uint64 rollupChainId,
         address etherRecipient,
         address to,
         bytes calldata data,
@@ -124,7 +124,7 @@ contract Transactor {
         transactGasUsed[rollupChainId][block.number] = gasUsed + gas;
 
         // emit Transact event
-        emit Transact(rollupChainId, msg.sender, to, data, value, gas, maxFeePerGas);
+        emit Transact(uint64(rollupChainId), msg.sender, to, data, value, gas, maxFeePerGas);
     }
 
     /// @notice Helper to configure gas limits on deploy & via admin function
