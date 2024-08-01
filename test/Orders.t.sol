@@ -157,7 +157,7 @@ contract OrdersTest is Test {
         // sweep ETH
         vm.expectEmit();
         emit Sweep(recipient, address(0), amount);
-        target.sweep(recipient, address(0));
+        target.sweep(recipient, address(0), amount);
 
         assertEq(recipient.balance, amount);
     }
@@ -173,7 +173,7 @@ contract OrdersTest is Test {
         vm.expectEmit();
         emit Sweep(recipient, token, amount);
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transfer.selector, recipient, amount));
-        target.sweep(recipient, token);
+        target.sweep(recipient, token, amount);
     }
 
     function test_fill_ETH() public {

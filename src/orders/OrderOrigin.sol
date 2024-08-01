@@ -74,17 +74,14 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
     /// @param token - The token to transfer.
     /// @custom:emits Sweep
     /// @custom:reverts OnlyBuilder if called by non-block builder
-    function sweep(address recipient, address token) external {
+    function sweep(address recipient, address token, uint256 amount) external {
         // send ETH or tokens
-        uint256 balance;
         if (token == address(0)) {
-            balance = address(this).balance;
-            payable(recipient).transfer(balance);
+            payable(recipient).transfer(amount);
         } else {
-            balance = IERC20(token).balanceOf(address(this));
-            IERC20(token).transfer(recipient, balance);
+            IERC20(token).transfer(recipient, amount);
         }
-        emit Sweep(recipient, token, balance);
+        emit Sweep(recipient, token, amount);
     }
 
     /// @notice Transfer the Order inputs to this contract, where they can be collected by the Order filler via `sweep`.
