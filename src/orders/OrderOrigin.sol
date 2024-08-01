@@ -5,9 +5,10 @@ import {OrdersPermit2} from "./OrdersPermit2.sol";
 import {IOrders} from "./IOrders.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardTransient} from "openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
-abstract contract OrderOrigin is IOrders, OrdersPermit2 {
+abstract contract OrderOrigin is IOrders, OrdersPermit2, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
@@ -36,7 +37,7 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
     /// @param outputs - The token amounts that must be received on their target chain(s) in order for the Order to be executed.
     /// @custom:reverts OrderExpired if the deadline has passed.
     /// @custom:emits Order if the transaction mines.
-    function initiate(uint256 deadline, Input[] memory inputs, Output[] memory outputs) external payable {
+    function initiate(uint256 deadline, Input[] memory inputs, Output[] memory outputs) external payable nonReentrant {
         // check that the deadline hasn't passed
         if (block.timestamp > deadline) revert OrderExpired();
 
@@ -59,7 +60,7 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
         address tokenRecipient,
         Output[] memory outputs,
         OrdersPermit2.Permit2Batch calldata permit2
-    ) external {
+    ) external nonReentrant {
         // transfer all tokens to the tokenRecipient via permit2 (includes check on nonce & deadline)
         _permitWitnessTransferFrom(
             outputWitness(outputs), _initiateTransferDetails(tokenRecipient, permit2.permit.permitted), permit2
@@ -77,10 +78,11 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
     /// @param token - The token to transfer.
     /// @custom:emits Sweep
     /// @custom:reverts OnlyBuilder if called by non-block builder
-    function sweep(address recipient, address token, uint256 amount) external {
+    function sweep(address recipient, address token, uint256 amount) external nonReentrant {
         // send ETH or tokens
         if (token == address(0)) {
-            payable(recipient).transfer(amount);
+            (bool success,) = payable(recipient).call{value: amount}("");
+            if (!success) revert EthTransferFailed();
         } else {
             IERC20(token).safeTransfer(recipient, amount);
         }

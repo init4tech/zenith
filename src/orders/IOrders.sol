@@ -2,6 +2,9 @@
 pragma solidity ^0.8.24;
 
 interface IOrders {
+    /// @notice Thrown when a transfer of Ether fails.
+    error EthTransferFailed();
+
     /// @notice Tokens sent by the swapper as inputs to the order
     /// @dev From ERC-7683
     struct Input {

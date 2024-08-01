@@ -5,9 +5,10 @@ import {OrdersPermit2} from "./OrdersPermit2.sol";
 import {IOrders} from "./IOrders.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuardTransient} from "openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
-abstract contract OrderDestination is IOrders, OrdersPermit2 {
+abstract contract OrderDestination is IOrders, OrdersPermit2, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /// @notice Emitted when Order Outputs are sent to their recipients.
@@ -19,7 +20,7 @@ abstract contract OrderDestination is IOrders, OrdersPermit2 {
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
     /// @param outputs - The Outputs to be transferred.
     /// @custom:emits Filled
-    function fill(Output[] memory outputs) external payable {
+    function fill(Output[] memory outputs) external payable nonReentrant {
         // transfer outputs
         _transferOutputs(outputs);
 
@@ -37,7 +38,7 @@ abstract contract OrderDestination is IOrders, OrdersPermit2 {
     /// @param outputs - The Outputs to be transferred. signed over via permit2 witness.
     /// @param permit2 - the permit2 details, signer, and signature.
     /// @custom:emits Filled
-    function fillPermit2(Output[] memory outputs, OrdersPermit2.Permit2Batch calldata permit2) external {
+    function fillPermit2(Output[] memory outputs, OrdersPermit2.Permit2Batch calldata permit2) external nonReentrant {
         // transfer all tokens to the Output recipients via permit2 (includes check on nonce & deadline)
         _permitWitnessTransferFrom(
             outputWitness(outputs), _fillTransferDetails(outputs, permit2.permit.permitted), permit2
@@ -54,7 +55,8 @@ abstract contract OrderDestination is IOrders, OrdersPermit2 {
             if (outputs[i].token == address(0)) {
                 // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
                 value -= outputs[i].amount;
-                payable(outputs[i].recipient).transfer(outputs[i].amount);
+                (bool success,) = payable(outputs[i].recipient).call{value: outputs[i].amount, gas: 5000}("");
+                if (!success) revert EthTransferFailed();
             } else {
                 IERC20(outputs[i].token).safeTransferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
             }

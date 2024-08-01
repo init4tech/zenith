@@ -25,6 +25,9 @@ contract Passage is PassagePermit2 {
     /// @notice Thrown when attempting to enter the rollup with an ERC20 token that is not currently allowed.
     error DisallowedEnter(address token);
 
+    /// @notice Thrown when a transfer of Ether fails.
+    error EthTransferFailed();
+
     /// @notice Emitted when Ether enters the rollup.
     /// @param rollupChainId - The chainId of the destination rollup.
     /// @param rollupRecipient - The recipient of Ether on the rollup.
@@ -128,7 +131,8 @@ contract Passage is PassagePermit2 {
     function withdraw(address token, address recipient, uint256 amount) external {
         if (msg.sender != tokenAdmin) revert OnlyTokenAdmin();
         if (token == address(0)) {
-            payable(recipient).transfer(amount);
+            (bool success,) = payable(recipient).call{value: amount, gas: 5000}("");
+            if (!success) revert EthTransferFailed();
         } else {
             IERC20(token).safeTransfer(recipient, amount);
         }
