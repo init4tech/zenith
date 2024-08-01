@@ -4,10 +4,13 @@ pragma solidity ^0.8.24;
 import {PassagePermit2} from "./PassagePermit2.sol";
 import {UsesPermit2} from "../UsesPermit2.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 
 /// @notice Enables tokens to Exit the rollup.
 contract RollupPassage is PassagePermit2 {
+    using SafeERC20 for IERC20;
+
     /// @notice Emitted when native Ether exits the rollup.
     /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
     /// @param amount - The amount of Ether exiting the rollup.
@@ -46,7 +49,7 @@ contract RollupPassage is PassagePermit2 {
     /// @custom:emits ExitToken
     function exitToken(address hostRecipient, address token, uint256 amount) external {
         // transfer tokens to this contract
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         // burn and emit
         _exitToken(hostRecipient, token, amount);
     }

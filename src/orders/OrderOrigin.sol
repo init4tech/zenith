@@ -4,9 +4,12 @@ pragma solidity ^0.8.24;
 import {OrdersPermit2} from "./OrdersPermit2.sol";
 import {IOrders} from "./IOrders.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
 abstract contract OrderOrigin is IOrders, OrdersPermit2 {
+    using SafeERC20 for IERC20;
+
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
 
@@ -79,7 +82,7 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
         if (token == address(0)) {
             payable(recipient).transfer(amount);
         } else {
-            IERC20(token).transfer(recipient, amount);
+            IERC20(token).safeTransfer(recipient, amount);
         }
         emit Sweep(recipient, token, amount);
     }
@@ -92,7 +95,7 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2 {
                 // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
                 value -= inputs[i].amount;
             } else {
-                IERC20(inputs[i].token).transferFrom(msg.sender, address(this), inputs[i].amount);
+                IERC20(inputs[i].token).safeTransferFrom(msg.sender, address(this), inputs[i].amount);
             }
         }
     }
