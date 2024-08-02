@@ -4,9 +4,12 @@ pragma solidity ^0.8.24;
 import {OrdersPermit2} from "./OrdersPermit2.sol";
 import {IOrders} from "./IOrders.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
 abstract contract OrderDestination is IOrders, OrdersPermit2 {
+    using SafeERC20 for IERC20;
+
     /// @notice Emitted when Order Outputs are sent to their recipients.
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
     event Filled(Output[] outputs);
@@ -53,7 +56,7 @@ abstract contract OrderDestination is IOrders, OrdersPermit2 {
                 value -= outputs[i].amount;
                 payable(outputs[i].recipient).transfer(outputs[i].amount);
             } else {
-                IERC20(outputs[i].token).transferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
+                IERC20(outputs[i].token).safeTransferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
             }
         }
     }

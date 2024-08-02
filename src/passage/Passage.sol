@@ -4,9 +4,12 @@ pragma solidity ^0.8.24;
 import {PassagePermit2} from "./PassagePermit2.sol";
 import {UsesPermit2} from "../UsesPermit2.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup.
 contract Passage is PassagePermit2 {
+    using SafeERC20 for IERC20;
+
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
 
@@ -90,7 +93,7 @@ contract Passage is PassagePermit2 {
     /// @param amount - The amount of tokens entering the rollup.
     function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
         // transfer tokens to this contract
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         // check and emit
         _enterToken(rollupChainId, rollupRecipient, token, amount);
     }
@@ -127,7 +130,7 @@ contract Passage is PassagePermit2 {
         if (token == address(0)) {
             payable(recipient).transfer(amount);
         } else {
-            IERC20(token).transfer(recipient, amount);
+            IERC20(token).safeTransfer(recipient, amount);
         }
         emit Withdrawal(token, recipient, amount);
     }
