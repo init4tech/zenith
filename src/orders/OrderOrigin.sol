@@ -5,11 +5,13 @@ import {OrdersPermit2} from "./OrdersPermit2.sol";
 import {IOrders} from "./IOrders.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {ReentrancyGuardTransient} from "openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @notice Contract capable of registering initiation of intent-based Orders.
 abstract contract OrderOrigin is IOrders, OrdersPermit2, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
+    using Address for address payable;
 
     /// @notice Thrown when an Order is submitted with a deadline that has passed.
     error OrderExpired();
@@ -81,8 +83,7 @@ abstract contract OrderOrigin is IOrders, OrdersPermit2, ReentrancyGuardTransien
     function sweep(address recipient, address token, uint256 amount) external nonReentrant {
         // send ETH or tokens
         if (token == address(0)) {
-            (bool success,) = payable(recipient).call{value: amount}("");
-            if (!success) revert EthTransferFailed();
+            payable(recipient).sendValue(amount);
         } else {
             IERC20(token).safeTransfer(recipient, amount);
         }

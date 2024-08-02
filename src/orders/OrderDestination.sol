@@ -5,11 +5,13 @@ import {OrdersPermit2} from "./OrdersPermit2.sol";
 import {IOrders} from "./IOrders.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {ReentrancyGuardTransient} from "openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @notice Contract capable of processing fulfillment of intent-based Orders.
 abstract contract OrderDestination is IOrders, OrdersPermit2, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
+    using Address for address payable;
 
     /// @notice Emitted when Order Outputs are sent to their recipients.
     /// @dev NOTE that here, Output.chainId denotes the *origin* chainId.
@@ -55,8 +57,7 @@ abstract contract OrderDestination is IOrders, OrdersPermit2, ReentrancyGuardTra
             if (outputs[i].token == address(0)) {
                 // this line should underflow if there's an attempt to spend more ETH than is attached to the transaction
                 value -= outputs[i].amount;
-                (bool success,) = payable(outputs[i].recipient).call{value: outputs[i].amount, gas: 5000}("");
-                if (!success) revert EthTransferFailed();
+                payable(outputs[i].recipient).sendValue(outputs[i].amount);
             } else {
                 IERC20(outputs[i].token).safeTransferFrom(msg.sender, outputs[i].recipient, outputs[i].amount);
             }

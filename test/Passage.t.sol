@@ -8,9 +8,12 @@ import {RollupPassage} from "../src/passage/RollupPassage.sol";
 import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
 contract PassageTest is Test {
+    using Address for address payable;
+
     Passage public target;
     address token;
     address newToken;
@@ -113,13 +116,13 @@ contract PassageTest is Test {
     function test_receive() public {
         vm.expectEmit();
         emit Enter(target.defaultRollupChainId(), address(this), amount);
-        address(target).call{value: amount}("");
+        payable(address(target)).sendValue(amount);
     }
 
     function test_fallback() public {
         vm.expectEmit();
         emit Enter(target.defaultRollupChainId(), address(this), amount);
-        address(target).call{value: amount}("0xabcd");
+        payable(address(target)).functionCallWithValue("0xabcd", amount);
     }
 
     function test_enter() public {
@@ -163,6 +166,8 @@ contract PassageTest is Test {
 }
 
 contract RollupPassageTest is Test {
+    using Address for address payable;
+
     RollupPassage public target;
     address token;
     address recipient = address(0x123);
@@ -185,13 +190,13 @@ contract RollupPassageTest is Test {
     function test_receive() public {
         vm.expectEmit();
         emit Exit(address(this), amount);
-        address(target).call{value: amount}("");
+        payable(address(target)).sendValue(amount);
     }
 
     function test_fallback() public {
         vm.expectEmit();
         emit Exit(address(this), amount);
-        address(target).call{value: amount}("0xabcd");
+        payable(address(target)).functionCallWithValue("0xabcd", amount);
     }
 
     function test_exit() public {

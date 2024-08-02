@@ -5,10 +5,12 @@ import {PassagePermit2} from "./PassagePermit2.sol";
 import {UsesPermit2} from "../UsesPermit2.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup.
 contract Passage is PassagePermit2 {
     using SafeERC20 for IERC20;
+    using Address for address payable;
 
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
     uint256 public immutable defaultRollupChainId;
@@ -24,9 +26,6 @@ contract Passage is PassagePermit2 {
 
     /// @notice Thrown when attempting to enter the rollup with an ERC20 token that is not currently allowed.
     error DisallowedEnter(address token);
-
-    /// @notice Thrown when a transfer of Ether fails.
-    error EthTransferFailed();
 
     /// @notice Emitted when Ether enters the rollup.
     /// @param rollupChainId - The chainId of the destination rollup.
@@ -131,8 +130,7 @@ contract Passage is PassagePermit2 {
     function withdraw(address token, address recipient, uint256 amount) external {
         if (msg.sender != tokenAdmin) revert OnlyTokenAdmin();
         if (token == address(0)) {
-            (bool success,) = payable(recipient).call{value: amount, gas: 5000}("");
-            if (!success) revert EthTransferFailed();
+            payable(recipient).sendValue(amount);
         } else {
             IERC20(token).safeTransfer(recipient, amount);
         }
