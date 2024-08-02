@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.24;
+pragma solidity 0.8.26;
 
 import {OrdersPermit2} from "./OrdersPermit2.sol";
 import {IOrders} from "./IOrders.sol";

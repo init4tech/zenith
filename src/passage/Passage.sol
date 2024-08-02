@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.24;
+pragma solidity 0.8.26;
 
 import {PassagePermit2} from "./PassagePermit2.sol";
 import {UsesPermit2} from "../UsesPermit2.sol";
