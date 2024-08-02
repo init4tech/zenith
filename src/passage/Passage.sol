@@ -6,9 +6,10 @@ import {UsesPermit2} from "../UsesPermit2.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
+import {ReentrancyGuardTransient} from "openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @notice A contract deployed to Host chain that allows tokens to enter the rollup.
-contract Passage is PassagePermit2 {
+contract Passage is PassagePermit2, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
     using Address for address payable;
 
@@ -93,7 +94,10 @@ contract Passage is PassagePermit2 {
     /// @param rollupRecipient - The recipient of tokens on the rollup.
     /// @param token - The host chain address of the token entering the rollup.
     /// @param amount - The amount of tokens entering the rollup.
-    function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
+    function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount)
+        public
+        nonReentrant
+    {
         // transfer tokens to this contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         // check and emit
@@ -112,6 +116,7 @@ contract Passage is PassagePermit2 {
     /// @param permit2 - The Permit2 information, including token & amount.
     function enterTokenPermit2(uint256 rollupChainId, address rollupRecipient, PassagePermit2.Permit2 calldata permit2)
         external
+        nonReentrant
     {
         // transfer tokens to this contract via permit2
         _permitWitnessTransferFrom(enterWitness(rollupChainId, rollupRecipient), permit2);
@@ -127,7 +132,7 @@ contract Passage is PassagePermit2 {
 
     /// @notice Allows the admin to withdraw ETH or ERC20 tokens from the contract.
     /// @dev Only the admin can call this function.
-    function withdraw(address token, address recipient, uint256 amount) external {
+    function withdraw(address token, address recipient, uint256 amount) external nonReentrant {
         if (msg.sender != tokenAdmin) revert OnlyTokenAdmin();
         if (token == address(0)) {
             payable(recipient).sendValue(amount);

@@ -6,9 +6,10 @@ import {UsesPermit2} from "../UsesPermit2.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import {ReentrancyGuardTransient} from "openzeppelin-contracts/contracts/utils/ReentrancyGuardTransient.sol";
 
 /// @notice Enables tokens to Exit the rollup.
-contract RollupPassage is PassagePermit2 {
+contract RollupPassage is PassagePermit2, ReentrancyGuardTransient {
     using SafeERC20 for IERC20;
 
     /// @notice Emitted when native Ether exits the rollup.
@@ -47,7 +48,7 @@ contract RollupPassage is PassagePermit2 {
     /// @param token - The rollup address of the token exiting the rollup.
     /// @param amount - The amount of tokens exiting the rollup.
     /// @custom:emits ExitToken
-    function exitToken(address hostRecipient, address token, uint256 amount) external {
+    function exitToken(address hostRecipient, address token, uint256 amount) external nonReentrant {
         // transfer tokens to this contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         // burn and emit
@@ -58,7 +59,7 @@ contract RollupPassage is PassagePermit2 {
     /// @param hostRecipient - The *requested* recipient of tokens on the host chain.
     /// @param permit2 - The Permit2 information, including token & amount.
     /// @custom:emits ExitToken
-    function exitTokenPermit2(address hostRecipient, PassagePermit2.Permit2 calldata permit2) external {
+    function exitTokenPermit2(address hostRecipient, PassagePermit2.Permit2 calldata permit2) external nonReentrant {
         // transfer tokens to this contract
         _permitWitnessTransferFrom(exitWitness(hostRecipient), permit2);
         // burn and emit
