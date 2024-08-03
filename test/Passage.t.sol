@@ -14,7 +14,7 @@ contract PassageTest is Test {
     Passage public target;
     address token;
     address newToken;
-    uint256 chainId = 3;
+    uint64 chainId = 3;
     address recipient = address(0x123);
     uint256 amount = 200;
 
@@ -24,14 +24,14 @@ contract PassageTest is Test {
     uint256 gas = 10_000_000;
     uint256 maxFeePerGas = 50;
 
-    event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
+    event Enter(uint64 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
     event EnterToken(
-        uint256 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
+        uint64 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
     );
 
     event Transact(
-        uint256 indexed rollupChainId,
+        uint64 indexed rollupChainId,
         address indexed sender,
         address indexed to,
         bytes data,
@@ -52,7 +52,7 @@ contract PassageTest is Test {
         // deploy target
         address[] memory initialEnterTokens = new address[](1);
         initialEnterTokens[0] = token;
-        target = new Passage(block.chainid + 1, address(this), initialEnterTokens, address(0));
+        target = new Passage(uint64(uint64(block.chainid + 1)), address(this), initialEnterTokens, address(0));
         TestERC20(token).approve(address(target), amount * 10000);
 
         // deploy token two, don't configure
@@ -62,7 +62,7 @@ contract PassageTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(target.defaultRollupChainId(), block.chainid + 1);
+        assertEq(target.defaultRollupChainId(), uint64(block.chainid + 1));
         assertEq(target.tokenAdmin(), address(this));
         assertTrue(target.canEnter(token));
         assertFalse(target.canEnter(newToken));

@@ -11,7 +11,7 @@ contract Passage is PassagePermit2 {
     using SafeERC20 for IERC20;
 
     /// @notice The chainId of rollup that Ether will be sent to by default when entering the rollup via fallback() or receive().
-    uint256 public immutable defaultRollupChainId;
+    uint64 public immutable defaultRollupChainId;
 
     /// @notice The address that is allowed to withdraw funds from the contract.
     address public immutable tokenAdmin;
@@ -29,7 +29,7 @@ contract Passage is PassagePermit2 {
     /// @param rollupChainId - The chainId of the destination rollup.
     /// @param rollupRecipient - The recipient of Ether on the rollup.
     /// @param amount - The amount of Ether entering the rollup.
-    event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
+    event Enter(uint64 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
     /// @notice Emitted when ERC20 tokens enter the rollup.
     /// @param rollupChainId - The chainId of the destination rollup.
@@ -37,7 +37,7 @@ contract Passage is PassagePermit2 {
     /// @param token - The host chain address of the token entering the rollup.
     /// @param amount - The amount of tokens entering the rollup.
     event EnterToken(
-        uint256 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
+        uint64 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
     );
 
     /// @notice Emitted when the admin withdraws tokens from the contract.
@@ -49,7 +49,7 @@ contract Passage is PassagePermit2 {
     /// @param _defaultRollupChainId - the chainId of the rollup that Ether will be sent to by default
     ///                                when entering the rollup via fallback() or receive() fns.
     constructor(
-        uint256 _defaultRollupChainId,
+        uint64 _defaultRollupChainId,
         address _tokenAdmin,
         address[] memory initialEnterTokens,
         address _permit2
@@ -75,7 +75,7 @@ contract Passage is PassagePermit2 {
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of the Ether on the rollup.
     /// @custom:emits Enter indicating the amount of Ether to mint on the rollup & its recipient.
-    function enter(uint256 rollupChainId, address rollupRecipient) public payable {
+    function enter(uint64 rollupChainId, address rollupRecipient) public payable {
         if (msg.value == 0) return;
         emit Enter(rollupChainId, rollupRecipient, msg.value);
     }
@@ -91,7 +91,7 @@ contract Passage is PassagePermit2 {
     /// @param rollupRecipient - The recipient of tokens on the rollup.
     /// @param token - The host chain address of the token entering the rollup.
     /// @param amount - The amount of tokens entering the rollup.
-    function enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
+    function enterToken(uint64 rollupChainId, address rollupRecipient, address token, uint256 amount) public {
         // transfer tokens to this contract
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         // check and emit
@@ -108,7 +108,7 @@ contract Passage is PassagePermit2 {
     /// @param rollupChainId - The rollup chain to enter.
     /// @param rollupRecipient - The recipient of tokens on the rollup.
     /// @param permit2 - The Permit2 information, including token & amount.
-    function enterTokenPermit2(uint256 rollupChainId, address rollupRecipient, PassagePermit2.Permit2 calldata permit2)
+    function enterTokenPermit2(uint64 rollupChainId, address rollupRecipient, PassagePermit2.Permit2 calldata permit2)
         external
     {
         // transfer tokens to this contract via permit2
@@ -136,7 +136,7 @@ contract Passage is PassagePermit2 {
     }
 
     /// @notice Shared functionality for tokens entering rollup.
-    function _enterToken(uint256 rollupChainId, address rollupRecipient, address token, uint256 amount) internal {
+    function _enterToken(uint64 rollupChainId, address rollupRecipient, address token, uint256 amount) internal {
         if (amount == 0) return;
         if (!canEnter[token]) revert DisallowedEnter(token);
         emit EnterToken(rollupChainId, rollupRecipient, token, amount);
