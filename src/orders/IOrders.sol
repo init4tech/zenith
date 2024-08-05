@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
-pragma solidity ^0.8.24;
+pragma solidity 0.8.26;
 
 interface IOrders {
     /// @notice Tokens sent by the swapper as inputs to the order
