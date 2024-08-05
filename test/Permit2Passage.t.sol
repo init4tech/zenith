@@ -130,7 +130,7 @@ contract RollupPassagePermit2Test is SharedPermit2Test {
         _setUpPermit2(token, amount);
         _setupSinglePermit(token, amount);
 
-        // deploy Passage
+        // deploy RollupPassage
         target = new RollupPassage(address(permit2Contract));
         vm.label(address(target), "passage");
 

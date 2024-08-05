@@ -3,8 +3,9 @@ pragma solidity 0.8.26;
 
 // deploy contracts
 import {Zenith} from "../src/Zenith.sol";
-import {Transactor} from "../src/Transact.sol";
-import {HostOrders, RollupOrders} from "../src/orders/Orders.sol";
+import {Transactor} from "../src/Transactor.sol";
+import {HostOrders} from "../src/orders/HostOrders.sol";
+import {RollupOrders} from "../src/orders/RollupOrders.sol";
 import {Passage} from "../src/passage/Passage.sol";
 import {RollupPassage} from "../src/passage/RollupPassage.sol";
 // utils
