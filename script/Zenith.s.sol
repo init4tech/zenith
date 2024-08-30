@@ -5,9 +5,7 @@ pragma solidity 0.8.26;
 import {Zenith} from "../src/Zenith.sol";
 import {Transactor} from "../src/Transactor.sol";
 import {HostOrders} from "../src/orders/HostOrders.sol";
-import {RollupOrders} from "../src/orders/RollupOrders.sol";
 import {Passage} from "../src/passage/Passage.sol";
-import {RollupPassage} from "../src/passage/RollupPassage.sol";
 // utils
 import {Script} from "forge-std/Script.sol";
 
@@ -26,14 +24,6 @@ contract ZenithScript is Script {
         p = new Passage(defaultRollupChainId, withdrawalAdmin, initialEnterTokens, permit2);
         t = new Transactor(defaultRollupChainId, sequencerAndGasAdmin, p, 30_000_000, 5_000_000);
         m = new HostOrders(permit2);
-    }
-
-    // deploy:
-    // forge script ZenithScript --sig "deployL2(address)" --rpc-url $L2_RPC_URL --private-key $PRIVATE_KEY --broadcast $PERMIT_2
-    function deployL2(address permit2) public returns (RollupPassage p, RollupOrders m) {
-        vm.startBroadcast();
-        p = new RollupPassage(permit2);
-        m = new RollupOrders(permit2);
     }
 
     // NOTE: script must be run using SequencerAdmin key
