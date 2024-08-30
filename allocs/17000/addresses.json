@@ -1,0 +1,49 @@
+[
+  {
+    "contractName": "RollupPassage",
+    "contractAddress": "0xB043BdD3d91376A76078c361bb82496Fdb809aE2"
+  },
+  {
+    "contractName": "RollupOrders",
+    "contractAddress": "0xC2D3Dac6B115564B10329697195656459BFb2c74"
+  },
+  {
+    "contractName": "SimpleERC20",
+    "contractAddress": "0x44E5FeCB7B02CBEc88528f71Fdb95E2bA69bcE2e"
+  },
+  {
+    "contractName": "SimpleERC20",
+    "contractAddress": "0x36dF343FD78401eE024df3116e2A5a053bF1090b"
+  },
+  {
+    "contractName": "SafeProxyFactory",
+    "contractAddress": "0x8ff5C1D5233CA055cD536b2b87294d17f9160801"
+  },
+  {
+    "contractName": "SafeL2",
+    "contractAddress": "0x2f2965efaCFc64Fb85dF1902260eB25C0c996195"
+  },
+  {
+    "contractName": "CompatibilityFallbackHandler",
+    "contractAddress": "0xe59838EB7f251489b50940BD640326215420B936"
+  },
+  {
+    "contractAddress": "0x6b3Ff43C7317308517b8786FEaDe35EE0E7FDf99"
+  },
+  {
+    "contractName": "SignatureChecker",
+    "contractAddress": "0x01FA53E8463B5D332d02EAB2F8DA64E34cCcA966"
+  },
+  {
+    "contractName": "FiatTokenV2_2",
+    "contractAddress": "0x7d09Afccb172Bf4676107230cC245EeC5E22F429"
+  },
+  {
+    "contractName": "FiatTokenProxy",
+    "contractAddress": "0xF5E56a1307E5977155C8E160362e610E6d08D29B"
+  },
+  {
+    "contractName": "MasterMinter",
+    "contractAddress": "0x5319dAdc75F6AB99c7600e259edef4431c8541aB"
+  }
+]
