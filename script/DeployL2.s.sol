@@ -4,8 +4,6 @@ pragma solidity 0.8.26;
 // system contracts
 import {RollupOrders} from "../src/orders/RollupOrders.sol";
 import {RollupPassage} from "../src/passage/RollupPassage.sol";
-// permit2
-import {deployPermit2} from "./DeployPermit2.s.sol";
 // gnosis safe
 import {deployGnosisCore, deploySafeInstance, SafeSetup} from "./DeployGnosisSafe.s.sol";
 // simple erc20
