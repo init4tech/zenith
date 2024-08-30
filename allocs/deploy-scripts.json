@@ -1,0 +1,30 @@
+[
+    {
+        "relativePath": "../permit2",
+        "deployFilePath": "script",
+        "deployFile": "DeployPermit2.s.sol",
+        "deployContract": "DeployPermit2",
+        "deploySignature": "run"
+    },
+    {
+        "relativePath": "../zenith",
+        "deployFilePath": "script",
+        "deployFile": "ZenithL2.s.sol",
+        "deployContract": "L2Script",
+        "deploySignature": "deploySystem"
+    },
+    {
+        "relativePath": "../zenith",
+        "deployFilePath": "script",
+        "deployFile": "DeployGnosisSafe.s.sol",
+        "deployContract": "GnosisScript",
+        "deploySignature": "deployGnosis"
+    },
+    {
+        "relativePath": "../stablecoin-evm",
+        "deployFilePath": "scripts/deploy",
+        "deployFile": "deploy-fiat-token.s.sol",
+        "deployContract": "DeployFiatToken",
+        "deploySignature": "run"
+    }
+]
