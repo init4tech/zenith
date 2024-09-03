@@ -26,5 +26,12 @@
         "deployFile": "deploy-fiat-token.s.sol",
         "deployContract": "DeployFiatToken",
         "deploySignature": "run"
+    },
+    {
+        "relativePath": "../zenith",
+        "deployFilePath": "script",
+        "deployFile": "DeployWETH9.s.sol",
+        "deployContract": "WETHScript",
+        "deploySignature": "deployWETH9"
     }
 ]
