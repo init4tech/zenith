@@ -11,8 +11,9 @@ import {Script, console2} from "forge-std/Script.sol";
 
 // create2 address for Permit2
 address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
-// address of Minter with permission to mint ERC20 tokens
-address constant MINTER = 0x9999999999999999999999999999999999999999;
+// address that can mint ERC20 tokens. equal to "tokenadmin" in hex.
+// the Signet Node makes evm executions from this address to perform ERC20 bridge-ins.
+address constant MINTER = 0x00000000000000000000746f6b656E61646d696E;
 
 contract L2Script is Script {
     // deploy:
