@@ -7,3 +7,12 @@
 [submodule "lib/permit2"]
 	path = lib/permit2
 	url = https://github.com/Uniswap/permit2
+[submodule "lib/simple-erc20"]
+	path = lib/simple-erc20
+	url = https://github.com/init4tech/simple-erc20
+[submodule "lib/safe-smart-account"]
+	path = lib/safe-smart-account
+	url = https://github.com/safe-global/safe-smart-account
+[submodule "lib/stablecoin-evm"]
+	path = lib/stablecoin-evm
+	url = https://github.com/circlefin/stablecoin-evm
