@@ -177,7 +177,7 @@ contract RollupPassageTest is Test {
 
     event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
 
-    function setUp() public {
+    function setUp() public virtual {
         // deploy target
         target = new RollupPassage(address(0));
 
