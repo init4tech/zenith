@@ -15,9 +15,8 @@ contract OrdersTest is Test {
     IOrders.Input[] public inputs;
     IOrders.Output[] public outputs;
 
-    mapping(address => bool) isToken;
-
     address token;
+    address token2;
     uint32 chainId = 3;
     address recipient = address(0x123);
     uint256 amount = 200;
@@ -29,16 +28,20 @@ contract OrdersTest is Test {
 
     event Sweep(address indexed recipient, address indexed token, uint256 amount);
 
-    function setUp() public {
+    function setUp() public virtual {
         target = new RollupOrders(address(0));
 
         // setup token
         token = address(new TestERC20("hi", "HI"));
         TestERC20(token).mint(address(this), amount * 10000);
         TestERC20(token).approve(address(target), amount * 10000);
-        isToken[token] = true;
 
-        // setup Order Inputs/Outputs
+        // setup second token
+        token2 = address(new TestERC20("bye", "BYE"));
+        TestERC20(token2).mint(address(this), amount * 10000);
+        TestERC20(token2).approve(address(target), amount * 10000);
+
+        // setup simple Order Inputs/Outputs
         IOrders.Input memory input = IOrders.Input(token, amount);
         inputs.push(input);
 
@@ -90,11 +93,6 @@ contract OrdersTest is Test {
 
     // input multiple ERC20s
     function test_initiate_multiERC20() public {
-        // setup second token
-        address token2 = address(new TestERC20("bye", "BYE"));
-        TestERC20(token2).mint(address(this), amount * 10000);
-        TestERC20(token2).approve(address(target), amount * 10000);
-
         // add second token input
         inputs.push(IOrders.Input(token2, amount * 2));
 
