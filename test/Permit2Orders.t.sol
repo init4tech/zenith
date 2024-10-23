@@ -45,7 +45,7 @@ contract OrderOriginPermit2Test is Permit2BatchTest {
 
     event Filled(IOrders.Output[] outputs);
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork("https://ethereum-rpc.publicnode.com");
         // deploy token
         token = address(new TestERC20("hi", "HI"));

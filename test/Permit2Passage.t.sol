@@ -41,7 +41,7 @@ contract PassagePermit2Test is SharedPermit2Test {
         uint256 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
     );
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork("https://ethereum-rpc.publicnode.com");
 
         // deploy token
@@ -119,7 +119,7 @@ contract RollupPassagePermit2Test is SharedPermit2Test {
 
     event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork("https://ethereum-rpc.publicnode.com");
 
         // deploy token & approve permit2
