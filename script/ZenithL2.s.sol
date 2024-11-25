@@ -26,8 +26,8 @@ contract L2Script is Script {
         rollupOrders = address(new RollupOrders{salt: "zenith.rollupOrders"}(PERMIT2));
 
         // deploy simple erc20 tokens
-        wbtc = address(new SimpleERC20{salt: "zenith.wbtc"}(MINTER, "Wrapped BTC", "WBTC"));
-        usdt = address(new SimpleERC20{salt: "zenith.usdt"}(MINTER, "Tether USD", "USDT"));
+        wbtc = address(new SimpleERC20{salt: "zenith.wbtc"}(MINTER, "Wrapped BTC", "WBTC", 8));
+        usdt = address(new SimpleERC20{salt: "zenith.usdt"}(MINTER, "Tether USD", "USDT", 6));
     }
 }
 
