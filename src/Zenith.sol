@@ -13,7 +13,7 @@ contract Zenith {
     /// @param hostBlockNumber - the host block number in which the rollup block must be submitted. Enforced by the contract.
     /// @param gasLimit - the gas limit for the rollup block. Ignored by the contract; enforced by the Node.
     /// @param rewardAddress - the address to receive the rollup block reward. Ignored by the contract; enforced by the Node.
-    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match.
+    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doesn't match.
     ///                        this allows the sequencer to sign over finalized set of transactions,
     ///                        without the Zenith contract needing to interact with raw transaction data (which may be provided via blobs or calldata).
     struct BlockHeader {
@@ -51,7 +51,7 @@ contract Zenith {
     /// @param rollupChainId - the chainId of the rollup chain.
     /// @param gasLimit - the gas limit for the rollup block.
     /// @param rewardAddress - the address to receive the rollup block reward.
-    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doens't match transactions provided.
+    /// @param blockDataHash - keccak256(rlp-encoded transactions). the Node will discard the block if the hash doesn't match transactions provided.
     /// @dev including blockDataHash allows the sequencer to sign over finalized block data, without needing to calldatacopy the `blockData` param.
     event BlockSubmitted(
         address indexed sequencer,
