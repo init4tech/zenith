@@ -20,8 +20,6 @@ struct SafeSetup {
     uint256 saltNonce;
 }
 
-address constant OWNER_ONE = 0x1111111111111111111111111111111111111111;
-address constant OWNER_TWO = 0x2222222222222222222222222222222222222222;
 bytes32 constant SENTINEL_VALUE = 0x0000000000000000000000000000000000000000000000000000000000000001;
 
 contract GnosisScript is Script {
@@ -29,15 +27,12 @@ contract GnosisScript is Script {
     // forge script GnosisScript --sig "deployGnosis()" --rpc-url $RPC_URL --broadcast [signing args]
     function deployGnosis()
         public
-        returns (address gnosisFactory, address gnosisSingleton, address gnosisFallbackHandler, address usdcAdmin)
+        returns (address gnosisFactory, address gnosisSingleton, address gnosisFallbackHandler)
     {
         vm.startBroadcast();
 
         // deploy gnosis safe singleton & proxy factory
         (gnosisFactory, gnosisSingleton, gnosisFallbackHandler) = deployGnosisCore();
-
-        // deploy a gnosis safe proxy as the USDC admin
-        usdcAdmin = deploySafeInstance(gnosisFactory, gnosisSingleton, getUsdcAdminSetup(gnosisFallbackHandler));
     }
 
     function deployGnosisCore() public returns (address factory, address singleton, address fallbackHandler) {
@@ -62,25 +57,6 @@ contract GnosisScript is Script {
             setup.paymentReceiver
         );
         safe = address(SafeProxyFactory(factory).createProxyWithNonce(singleton, init, setup.saltNonce));
-    }
-
-    // setup the gnosis safe with 2 owners, threshold of 1.
-    // make the owners recognizable addrs to aid in inspecting storage layout
-    function getUsdcAdminSetup(address fallbackHandler) public pure returns (SafeSetup memory usdcAdminSetup) {
-        address[] memory owners = new address[](2);
-        owners[0] = OWNER_ONE;
-        owners[1] = OWNER_TWO;
-        usdcAdminSetup = SafeSetup({
-            owners: owners,
-            threshold: 1,
-            to: address(0),
-            data: "",
-            fallbackHandler: fallbackHandler,
-            paymentToken: address(0),
-            payment: 0,
-            paymentReceiver: payable(address(0)),
-            saltNonce: 17001
-        });
     }
 
     // example run:
