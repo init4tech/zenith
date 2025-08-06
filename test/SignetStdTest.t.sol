@@ -22,13 +22,13 @@ contract SignetStdTest is SignetStd, Test {
             ROLLUP_ORDERS = new RollupOrders(PERMIT2);
             ROLLUP_WETH = new TestERC20("Wrapped Ether", "WETH", 18);
             ROLLUP_WBTC = new TestERC20("Wrapped Bitcoin", "WBTC", 8);
-            ROLLUP_WUSD = new TestERC20("Wrapped USD", "WUSD", 18);
+            ROLLUP_WUSD = new TestERC20("Wrapped USD", "WUSD", 18); // TODO: make it a real WETH!
 
             HOST_CHAIN_ID = 31337; // Localhost chain ID
             HOST_USDC = new TestERC20("USD Coin", "USDC", 6);
             HOST_USDT = new TestERC20("Tether USD", "USDT", 6);
             HOST_WBTC = new TestERC20("Wrapped Bitcoin", "WBTC", 8);
-            HOST_WETH = new TestERC20("Wrapped Ether", "WETH", 18);
+            HOST_WETH = new TestERC20("Wrapped Ether", "WETH", 18); // TODO: make it a real WETH!
             TOKEN_ADMIN = address(this);
             GAS_ADMIN = address(this);
             SEQUENCER_ADMIN = address(this);

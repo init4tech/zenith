@@ -13,6 +13,7 @@ import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extens
 import {Test, console2} from "forge-std/Test.sol";
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 
+// TODO: local tests will fail until Permit2 is etched
 contract PassagePermit2Test is Permit2Helpers {
     using Address for address payable;
 
@@ -29,7 +30,6 @@ contract PassagePermit2Test is Permit2Helpers {
 
     function setUp() public virtual {
         vm.createSelectFork("https://ethereum-rpc.publicnode.com");
-        // re-setup Std after forking -- TODO -- change this so that setupStd() does the forking itself? idk?
         setupStd();
 
         // setup Passage
@@ -103,6 +103,7 @@ contract PassagePermit2Test is Permit2Helpers {
     }
 }
 
+// TODO: local tests will fail until Permit2 is etched
 contract RollupPassagePermit2Test is Permit2Helpers {
     RollupPassage public target;
 

@@ -39,6 +39,7 @@ contract PassageTest is SignetStdTest {
         // setup token
         token = address(HOST_WETH);
         // mint WETH by sending ETH
+        // TODO - this will fail until real WETH is deployed for the test SignetStd
         payable(token).sendValue(amount * 10000);
         TestERC20(token).approve(address(target), amount * 10000);
 

@@ -47,7 +47,7 @@ library PecorinoConstants {
     /// @notice WETH token for the Pecorino testnet host chain.
     IERC20 constant HOST_WETH = IERC20(0x572C4d72080ed9E9997509b583a22B785B70cB3f);
 
-    // TODO
+    // TODO - set actual values on pecorino
     /// @notice The token admin address, used for configuring tokens on Passage and for withdrawals.
     address constant TOKEN_ADMIN = address(0);
     /// @notice The gas admin address, used for configuring gas limits on Transactor.
