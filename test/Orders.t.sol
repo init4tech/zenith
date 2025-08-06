@@ -9,15 +9,17 @@ import {OrderOrigin} from "../src/orders/OrderOrigin.sol";
 import {TestERC20} from "./Helpers.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {Test, console2} from "forge-std/Test.sol";
+import {SignetStdTest} from "./SignetStdTest.t.sol";
 
-contract OrdersTest is Test {
+contract OrdersTest is SignetStdTest {
     RollupOrders public target;
+
     IOrders.Input[] public inputs;
     IOrders.Output[] public outputs;
 
     address token;
     address token2;
-    uint32 chainId = 3;
+
     address recipient = address(0x123);
     uint256 amount = 200;
     uint256 deadline = block.timestamp;
@@ -29,15 +31,17 @@ contract OrdersTest is Test {
     event Sweep(address indexed recipient, address indexed token, uint256 amount);
 
     function setUp() public virtual {
-        target = new RollupOrders(address(0));
+        target = ROLLUP_ORDERS;
 
-        // setup token
-        token = address(new TestERC20("hi", "HI"));
+        // setup first token
+        token = address(ROLLUP_WBTC);
+        vm.prank(ROLLUP_MINTER);
         TestERC20(token).mint(address(this), amount * 10000);
         TestERC20(token).approve(address(target), amount * 10000);
 
         // setup second token
-        token2 = address(new TestERC20("bye", "BYE"));
+        token2 = address(ROLLUP_WETH);
+        vm.prank(ROLLUP_MINTER);
         TestERC20(token2).mint(address(this), amount * 10000);
         TestERC20(token2).approve(address(target), amount * 10000);
 
@@ -45,7 +49,7 @@ contract OrdersTest is Test {
         IOrders.Input memory input = IOrders.Input(token, amount);
         inputs.push(input);
 
-        IOrders.Output memory output = IOrders.Output(token, amount, recipient, chainId);
+        IOrders.Output memory output = IOrders.Output(token, amount, recipient, ROLLUP_CHAIN_ID);
         outputs.push(output);
     }
 
@@ -143,9 +147,6 @@ contract OrdersTest is Test {
     }
 
     function test_sweepETH() public {
-        // set self as Builder
-        vm.coinbase(address(this));
-
         // initiate an ETH order
         inputs[0].token = address(0);
         target.initiate{value: amount}(deadline, inputs, outputs);
@@ -161,9 +162,6 @@ contract OrdersTest is Test {
     }
 
     function test_sweepERC20() public {
-        // set self as Builder
-        vm.coinbase(address(this));
-
         // send ERC20 to the contract
         TestERC20(token).transfer(address(target), amount);
 
@@ -194,7 +192,7 @@ contract OrdersTest is Test {
 
     function test_fill_both() public {
         // add ETH output
-        outputs.push(IOrders.Output(address(0), amount * 2, recipient, chainId));
+        outputs.push(IOrders.Output(address(0), amount * 2, recipient, ROLLUP_CHAIN_ID));
 
         // expect Outputs are filled, ERC20 is transferred
         vm.expectEmit();
@@ -211,7 +209,7 @@ contract OrdersTest is Test {
         // change first output to ETH
         outputs[0].token = address(0);
         // add second ETH oputput
-        outputs.push(IOrders.Output(address(0), amount * 2, recipient, chainId));
+        outputs.push(IOrders.Output(address(0), amount * 2, recipient, ROLLUP_CHAIN_ID));
 
         // expect Order event is initiated
         vm.expectEmit();
@@ -226,7 +224,7 @@ contract OrdersTest is Test {
         // change first output to ETH
         outputs[0].token = address(0);
         // add second ETH output
-        outputs.push(IOrders.Output(address(0), 1, recipient, chainId));
+        outputs.push(IOrders.Output(address(0), 1, recipient, ROLLUP_CHAIN_ID));
 
         // total ETH outputs should be `amount` + 1; function should underflow only sending `amount`
         vm.expectRevert();

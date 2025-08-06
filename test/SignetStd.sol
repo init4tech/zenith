@@ -1,0 +1,139 @@
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.13;
+
+import {RollupOrders} from "../src/orders/RollupOrders.sol";
+import {RollupPassage} from "../src/passage/RollupPassage.sol";
+import {Zenith} from "../src/Zenith.sol";
+import {Transactor} from "../src/Transactor.sol";
+import {HostOrders} from "../src/orders/HostOrders.sol";
+import {Passage} from "../src/passage/Passage.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
+
+/// @title PecorinoConstants
+/// @author init4
+/// @notice Constants for the Pecorino testnet.
+/// @dev These constants are used to configure the SignetStd contract in its
+///      constructor, if the chain ID matches the Pecorino testnet chain ID.
+library PecorinoConstants {
+    /// @notice The Pecorino Rollup chain ID.
+    uint32 constant ROLLUP_CHAIN_ID = 14174;
+    /// @notice The Rollup Passage contract for the Pecorino testnet.
+    RollupPassage constant ROLLUP_PASSAGE = RollupPassage(payable(0x0000000000007369676E65742D70617373616765));
+    /// @notice The Rollup Orders contract for the Pecorino testnet.
+    RollupOrders constant ROLLUP_ORDERS = RollupOrders(0x000000000000007369676E65742D6f7264657273);
+    /// @notice WETH token address for the Pecorino testnet.
+    IERC20 constant ROLLUP_WETH = IERC20(0x0000000000000000007369676e65742d77657468);
+    /// @notice WBTC token address for the Pecorino testnet.
+    IERC20 constant ROLLUP_WBTC = IERC20(0x0000000000000000007369676e65742D77627463);
+    /// @notice WUSD token address for the Pecorino testnet.
+    IERC20 constant ROLLUP_WUSD = IERC20(0x0000000000000000007369676e65742D77757364);
+
+    /// @notice The Pecorino host chain ID.
+    uint32 constant HOST_CHAIN_ID = 3151908;
+    /// @notice The Passage contract on the host network.
+    Passage constant HOST_PASSAGE = Passage(payable(0xd553C4CA4792Af71F4B61231409eaB321c1Dd2Ce));
+    /// @notice The Orders contract on the host network.
+    HostOrders constant HOST_ORDERS = HostOrders(0x4E8cC181805aFC307C83298242271142b8e2f249);
+    /// @notice The Zenith contract for the Pecorino testnet.
+    Zenith constant HOST_ZENITH = Zenith(0xbe45611502116387211D28cE493D6Fb3d192bc4E);
+    /// @notice The Transactor contract on the host network.
+    Transactor constant HOST_TRANSACTOR = Transactor(0x1af3A16857C28917Ab2C4c78Be099fF251669200);
+    /// @notice USDC token for the Pecorino testnet host chain.
+    IERC20 constant HOST_USDC = IERC20(0x885F8DB528dC8a38aA3DDad9D3F619746B4a6A81);
+    /// @notice USDT token for the Pecorino testnet host chain.
+    IERC20 constant HOST_USDT = IERC20(0x7970D259D4a96764Fa9B23FF0715A35f06f52D1A);
+    /// @notice WBTC token for the Pecorino testnet host chain.
+    IERC20 constant HOST_WBTC = IERC20(0x9aeDED4224f3dD31aD8A0B1FcD05E2d7829283a7);
+    /// @notice WETH token for the Pecorino testnet host chain.
+    IERC20 constant HOST_WETH = IERC20(0x572C4d72080ed9E9997509b583a22B785B70cB3f);
+
+    // TODO
+    /// @notice The token admin address, used for configuring tokens on Passage and for withdrawals.
+    address constant TOKEN_ADMIN = address(0);
+    /// @notice The gas admin address, used for configuring gas limits on Transactor.
+    address constant GAS_ADMIN = address(0);
+    /// @notice The sequencer admin address, used for configuring sequencer settings on Zenith.
+    address constant SEQUENCER_ADMIN = address(0);
+}
+
+contract SignetStd {
+    /// SHARED CONSTANTS
+    /// @notice The native asset address, used as a sentinel for native USD on
+    ///         the rollup, or native ETH on the host.
+    address constant NATIVE_ASSET = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    /// @notice Permit2 contract address, which is the same on all chains.
+    address constant PERMIT2 = 0x000000000022D473030F116dDEE9F6B43aC78BA3;
+
+    /// ROLLUP CONSTANTS
+    /// @notice The chain ID of the rollup.
+    uint32 internal ROLLUP_CHAIN_ID;
+    /// @notice The Rollup Passage contract.
+    RollupPassage internal ROLLUP_PASSAGE;
+    /// @notice The Rollup Orders contract.
+    RollupOrders internal ROLLUP_ORDERS;
+    /// @notice The WETH token address.
+    IERC20 internal ROLLUP_WETH;
+    /// @notice The WBTC token address.
+    IERC20 internal ROLLUP_WBTC;
+    /// @notice The WUSD token address.
+    IERC20 internal ROLLUP_WUSD;
+    /// @notice The system address that mints tokens on the rollup.
+    address internal ROLLUP_MINTER = address(0x00000000000000000000746f6b656E61646d696E);
+
+    /// HOST CONSTANTS
+    /// @notice The chain ID of the host network.
+    uint32 internal HOST_CHAIN_ID;
+    /// @notice The Passage contract on the host network.
+    Passage internal HOST_PASSAGE;
+    /// @notice The Orders contract on the host network.
+    HostOrders internal HOST_ORDERS;
+    /// @notice The Zenith contract.
+    Zenith internal HOST_ZENITH;
+    /// @notice The Transact contract on the host network.
+    Transactor internal HOST_TRANSACTOR;
+    /// @notice The USDC token address on the host network.
+    IERC20 internal HOST_USDC;
+    /// @notice The USDT token address on the host network.
+    IERC20 internal HOST_USDT;
+    /// @notice The WBTC token address on the host network.
+    IERC20 internal HOST_WBTC;
+    /// @notice The WETH token address on the host network.
+    IERC20 internal HOST_WETH;
+    /// @notice The token admin address, used for configuring tokens on Passage and for withdrawals.
+    address internal TOKEN_ADMIN;
+    /// @notice The gas admin address, used for configuring gas limits on Transactor.
+    address internal GAS_ADMIN;
+    /// @notice The sequencer admin address, used for configuring sequencer settings on Zenith.
+    address internal SEQUENCER_ADMIN;
+
+    constructor() {
+        setupStd();
+    }
+
+    function setupStd() internal virtual {
+        // Auto-configure based on the chain ID.
+        if (block.chainid == PecorinoConstants.ROLLUP_CHAIN_ID || block.chainid == PecorinoConstants.HOST_CHAIN_ID) {
+            ROLLUP_CHAIN_ID = PecorinoConstants.ROLLUP_CHAIN_ID;
+            ROLLUP_PASSAGE = PecorinoConstants.ROLLUP_PASSAGE;
+            ROLLUP_ORDERS = PecorinoConstants.ROLLUP_ORDERS;
+            ROLLUP_WETH = PecorinoConstants.ROLLUP_WETH;
+            ROLLUP_WBTC = PecorinoConstants.ROLLUP_WBTC;
+            ROLLUP_WUSD = PecorinoConstants.ROLLUP_WUSD;
+
+            HOST_CHAIN_ID = PecorinoConstants.HOST_CHAIN_ID;
+            HOST_PASSAGE = PecorinoConstants.HOST_PASSAGE;
+            HOST_ORDERS = PecorinoConstants.HOST_ORDERS;
+            HOST_ZENITH = PecorinoConstants.HOST_ZENITH;
+            HOST_TRANSACTOR = PecorinoConstants.HOST_TRANSACTOR;
+            HOST_USDC = PecorinoConstants.HOST_USDC;
+            HOST_USDT = PecorinoConstants.HOST_USDT;
+            HOST_WBTC = PecorinoConstants.HOST_WBTC;
+            HOST_WETH = PecorinoConstants.HOST_WETH;
+            TOKEN_ADMIN = PecorinoConstants.TOKEN_ADMIN;
+            GAS_ADMIN = PecorinoConstants.GAS_ADMIN;
+            SEQUENCER_ADMIN = PecorinoConstants.SEQUENCER_ADMIN;
+        } else {
+            revert("Unsupported chain ID");
+        }
+    }
+}
