@@ -29,9 +29,6 @@ contract PassagePermit2Test is Permit2Helpers {
     );
 
     function setUp() public virtual {
-        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
-        setupStd();
-
         // setup Passage
         target = HOST_PASSAGE;
         vm.label(address(target), "passage");
@@ -115,9 +112,6 @@ contract RollupPassagePermit2Test is Permit2Helpers {
     event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
 
     function setUp() public virtual {
-        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
-        setupStd();
-
         // setup RollupPassage
         target = ROLLUP_PASSAGE;
         vm.label(address(target), "rollup_passage");

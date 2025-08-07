@@ -29,9 +29,6 @@ contract OrderOriginPermit2Test is Permit2Helpers {
     event Filled(IOrders.Output[] outputs);
 
     function setUp() public virtual {
-        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
-        setupStd();
-
         // setup Orders contract
         target = ROLLUP_ORDERS;
         vm.label(address(target), "orders");
