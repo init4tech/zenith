@@ -52,11 +52,11 @@ jobs:
       forge-deployment-script-file: Zenith.s.sol
       forge-deployment-signature: "deploy(uint256,address,address[],address,address)"
       forge-deployment-params: "17001 0x11Aa4EBFbf7a481617c719a2Df028c9DA1a219aa [] 0x29403F107781ea45Bf93710abf8df13F67f2008f 0x000000000022D473030F116dDEE9F6B43aC78BA3"
-      etherscan-url: https://holesky.etherscan.io
-      chain-id: 17000
+      etherscan-url: https://explorer-host.pecorino.signet.sh
+      chain-id: 3151908
       deployer-address: ${{ vars.HOLESKY_DEPLOYER_ADDRESS }}
     secrets:
       aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
       kms-key-id: ${{ secrets.HOLESKY_DEPLOYER_KEY_ID }}
-      rpc-url: ${{ secrets.HOLESKY_RPC_URL }}
+      rpc-url: ${{ secrets.PECORINO_RPC_URL }}
       etherscan-api-key: ${{ secrets.ETHERSCAN_API_KEY }}
