@@ -49,11 +49,11 @@ library PecorinoConstants {
 
     // TODO - set actual values on pecorino
     /// @notice The token admin address, used for configuring tokens on Passage and for withdrawals.
-    address constant TOKEN_ADMIN = address(0);
+    address constant TOKEN_ADMIN = address(0x11Aa4EBFbf7a481617c719a2Df028c9DA1a219aa);
     /// @notice The gas admin address, used for configuring gas limits on Transactor.
-    address constant GAS_ADMIN = address(0);
+    address constant GAS_ADMIN = address(0x29403F107781ea45Bf93710abf8df13F67f2008f);
     /// @notice The sequencer admin address, used for configuring sequencer settings on Zenith.
-    address constant SEQUENCER_ADMIN = address(0);
+    address constant SEQUENCER_ADMIN = address(0x29403F107781ea45Bf93710abf8df13F67f2008f);
 }
 
 contract SignetStd {
