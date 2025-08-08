@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 
 // test contracts
-import {Zenith} from "../src/Zenith.sol";
+import {Zenith} from "../../src/Zenith.sol";
 // utils
 import {SignetStdTest} from "./SignetStdTest.t.sol";
 import {Test, console2} from "forge-std/Test.sol";
