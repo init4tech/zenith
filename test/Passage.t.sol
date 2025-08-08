@@ -32,7 +32,7 @@ contract PassageTest is SignetStdTest {
 
     event Withdrawal(address indexed token, address indexed recipient, uint256 amount);
 
-    function setUp() public {
+    function setUp() public virtual {
         // deploy target
         target = HOST_PASSAGE;
 

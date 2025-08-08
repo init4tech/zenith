@@ -21,7 +21,7 @@ contract OrderOriginPermit2Test is Permit2Helpers {
     address token;
     address recipient = address(0xdeadbeef);
     uint256 amount = 200;
-    uint256 deadline = block.timestamp;
+    uint256 deadline;
 
     event Order(uint256 deadline, IOrders.Input[] inputs, IOrders.Output[] outputs);
 
@@ -56,6 +56,8 @@ contract OrderOriginPermit2Test is Permit2Helpers {
 
         IOrders.Output memory output = IOrders.Output(token, amount, recipient, ROLLUP_CHAIN_ID);
         outputs.push(output);
+
+        deadline = block.timestamp;
 
         // construct Orders witness
         witness = target.outputWitness(outputs);

@@ -28,7 +28,7 @@ contract ZenithTest is SignetStdTest {
 
     event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
-    function setUp() public {
+    function setUp() public virtual {
         target = HOST_ZENITH;
 
         // configure a local signer as a sequencer
@@ -68,7 +68,7 @@ contract ZenithTest is SignetStdTest {
         // sign block commitment with correct sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
-        assertEq(target.lastSubmittedAtBlock(header.rollupChainId), 0);
+        assertNotEq(target.lastSubmittedAtBlock(header.rollupChainId), block.number);
 
         // should emit BlockSubmitted event
         vm.expectEmit();

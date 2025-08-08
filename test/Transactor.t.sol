@@ -34,7 +34,7 @@ contract TransactTest is SignetStdTest {
     // Passage event
     event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
-    function setUp() public {
+    function setUp() public virtual {
         // deploy target
         target = HOST_TRANSACTOR;
     }
@@ -105,9 +105,11 @@ contract TransactTest is SignetStdTest {
         uint256 newPerTransact = 2_000_000;
 
         // configure gas
+        vm.startPrank(GAS_ADMIN);
         vm.expectEmit();
         emit GasConfigured(newPerBlock, newPerTransact);
         target.configureGas(newPerBlock, newPerTransact);
+        vm.stopPrank();
 
         assertEq(target.perBlockGasLimit(), newPerBlock);
         assertEq(target.perTransactGasLimit(), newPerTransact);

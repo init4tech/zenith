@@ -22,7 +22,7 @@ contract OrdersTest is SignetStdTest {
 
     address recipient = address(0x123);
     uint256 amount = 200;
-    uint256 deadline = block.timestamp;
+    uint256 deadline;
 
     event Filled(IOrders.Output[] outputs);
 
@@ -51,6 +51,8 @@ contract OrdersTest is SignetStdTest {
 
         IOrders.Output memory output = IOrders.Output(token, amount, recipient, ROLLUP_CHAIN_ID);
         outputs.push(output);
+
+        deadline = block.timestamp;
     }
 
     // input ERC20
