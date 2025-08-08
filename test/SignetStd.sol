@@ -31,21 +31,21 @@ library PecorinoConstants {
     /// @notice The Pecorino host chain ID.
     uint32 constant HOST_CHAIN_ID = 3151908;
     /// @notice The Passage contract on the host network.
-    Passage constant HOST_PASSAGE = Passage(payable(0xd553C4CA4792Af71F4B61231409eaB321c1Dd2Ce));
+    Passage constant HOST_PASSAGE = Passage(payable(0x12585352AA1057443D6163B539EfD4487f023182));
     /// @notice The Orders contract on the host network.
-    HostOrders constant HOST_ORDERS = HostOrders(0x4E8cC181805aFC307C83298242271142b8e2f249);
+    HostOrders constant HOST_ORDERS = HostOrders(0x0A4f505364De0Aa46c66b15aBae44eBa12ab0380);
     /// @notice The Zenith contract for the Pecorino testnet.
-    Zenith constant HOST_ZENITH = Zenith(0xbe45611502116387211D28cE493D6Fb3d192bc4E);
+    Zenith constant HOST_ZENITH = Zenith(0xf17E98baF73F7C78a42D73DF4064de5B7A20EcA6);
     /// @notice The Transactor contract on the host network.
-    Transactor constant HOST_TRANSACTOR = Transactor(0x1af3A16857C28917Ab2C4c78Be099fF251669200);
+    Transactor constant HOST_TRANSACTOR = Transactor(0x3903279B59D3F5194053dA8d1f0C7081C8892Ce4);
     /// @notice USDC token for the Pecorino testnet host chain.
-    IERC20 constant HOST_USDC = IERC20(0x885F8DB528dC8a38aA3DDad9D3F619746B4a6A81);
+    IERC20 constant HOST_USDC = IERC20(0x65Fb255585458De1F9A246b476aa8d5C5516F6fd);
     /// @notice USDT token for the Pecorino testnet host chain.
-    IERC20 constant HOST_USDT = IERC20(0x7970D259D4a96764Fa9B23FF0715A35f06f52D1A);
+    IERC20 constant HOST_USDT = IERC20(0xb9Df1b911B6cf6935b2a918Ba03dF2372E94e267);
     /// @notice WBTC token for the Pecorino testnet host chain.
-    IERC20 constant HOST_WBTC = IERC20(0x9aeDED4224f3dD31aD8A0B1FcD05E2d7829283a7);
+    IERC20 constant HOST_WBTC = IERC20(0xfb29F7d7a4CE607D6038d44150315e5F69BEa08A);
     /// @notice WETH token for the Pecorino testnet host chain.
-    IERC20 constant HOST_WETH = IERC20(0x572C4d72080ed9E9997509b583a22B785B70cB3f);
+    IERC20 constant HOST_WETH = IERC20(0xd03d085B78067A18155d3B29D64914df3D19A53C);
 
     /// @notice The token admin address, used for configuring tokens on Passage and for withdrawals.
     address constant TOKEN_ADMIN = address(0x11Aa4EBFbf7a481617c719a2Df028c9DA1a219aa);
