@@ -2,14 +2,14 @@
 pragma solidity 0.8.26;
 
 // test contracts
-import {IOrders} from "../src/orders/IOrders.sol";
-import {RollupOrders} from "../src/orders/RollupOrders.sol";
-import {OrderOrigin} from "../src/orders/OrderOrigin.sol";
+import {IOrders} from "../../src/orders/IOrders.sol";
+import {RollupOrders} from "../../src/orders/RollupOrders.sol";
+import {OrderOrigin} from "../../src/orders/OrderOrigin.sol";
 // utils
-import {TestERC20} from "./Helpers.t.sol";
+import {TestERC20} from "../Helpers.t.sol";
+import {SignetStdTest} from "../SignetStdTest.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {Test, console2} from "forge-std/Test.sol";
-import {SignetStdTest} from "./SignetStdTest.t.sol";
 
 contract OrdersTest is SignetStdTest {
     RollupOrders public target;

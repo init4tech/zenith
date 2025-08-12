@@ -2,15 +2,15 @@
 pragma solidity 0.8.26;
 
 // test contracts
-import {Passage} from "../src/passage/Passage.sol";
-import {RollupPassage} from "../src/passage/RollupPassage.sol";
+import {Passage} from "../../src/passage/Passage.sol";
+import {RollupPassage} from "../../src/passage/RollupPassage.sol";
 // utils
-import {TestERC20} from "./Helpers.t.sol";
+import {TestERC20} from "../Helpers.t.sol";
+import {SignetStdTest} from "../SignetStdTest.t.sol";
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {Test, console2} from "forge-std/Test.sol";
-import {SignetStdTest} from "./SignetStdTest.t.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 contract PassageTest is SignetStdTest {

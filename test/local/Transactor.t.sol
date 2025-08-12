@@ -2,10 +2,10 @@
 pragma solidity 0.8.26;
 
 // test contracts
-import {Transactor} from "../src/Transactor.sol";
-import {Passage} from "../src/passage/Passage.sol";
+import {Transactor} from "../../src/Transactor.sol";
+import {Passage} from "../../src/passage/Passage.sol";
 // utils
-import {SignetStdTest} from "./SignetStdTest.t.sol";
+import {SignetStdTest} from "../SignetStdTest.t.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
 contract TransactTest is SignetStdTest {
