@@ -10,22 +10,17 @@ import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 import {Test, console2} from "forge-std/Test.sol";
+import {SignetStdTest} from "./SignetStdTest.t.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
-contract PassageTest is Test {
+contract PassageTest is SignetStdTest {
     using Address for address payable;
 
     Passage public target;
     address token;
     address newToken;
-    uint256 chainId = 3;
     address recipient = address(0x123);
     uint256 amount = 200;
-
-    address to = address(0x01);
-    bytes data = abi.encodeWithSelector(ERC20.transfer.selector, recipient, amount);
-    uint256 value = 100;
-    uint256 gas = 10_000_000;
-    uint256 maxFeePerGas = 50;
 
     event Enter(uint256 indexed rollupChainId, address indexed rollupRecipient, uint256 amount);
 
@@ -33,40 +28,29 @@ contract PassageTest is Test {
         uint256 indexed rollupChainId, address indexed rollupRecipient, address indexed token, uint256 amount
     );
 
-    event Transact(
-        uint256 indexed rollupChainId,
-        address indexed sender,
-        address indexed to,
-        bytes data,
-        uint256 value,
-        uint256 gas,
-        uint256 maxFeePerGas
-    );
+    event EnterConfigured(address indexed token, bool indexed canEnter);
 
     event Withdrawal(address indexed token, address indexed recipient, uint256 amount);
 
-    event EnterConfigured(address indexed token, bool indexed canEnter);
-
-    function setUp() public {
-        // deploy token one, configured at deploy time
-        token = address(new TestERC20("hi", "HI"));
-        TestERC20(token).mint(address(this), amount * 10000);
-
+    function setUp() public virtual {
         // deploy target
-        address[] memory initialEnterTokens = new address[](1);
-        initialEnterTokens[0] = token;
-        target = new Passage(block.chainid + 1, address(this), initialEnterTokens, address(0));
+        target = HOST_PASSAGE;
+
+        // setup token
+        token = address(HOST_WETH);
+        // mint WETH by sending ETH
+        payable(token).sendValue(amount * 10000);
         TestERC20(token).approve(address(target), amount * 10000);
 
-        // deploy token two, don't configure
-        newToken = address(new TestERC20("bye", "BYE"));
+        // deploy new token that's not configured on Passage
+        newToken = address(new TestERC20("bye", "BYE", 18));
         TestERC20(newToken).mint(address(this), amount * 10000);
         TestERC20(newToken).approve(address(target), amount * 10000);
     }
 
     function test_setUp() public {
-        assertEq(target.defaultRollupChainId(), block.chainid + 1);
-        assertEq(target.tokenAdmin(), address(this));
+        assertEq(target.defaultRollupChainId(), ROLLUP_CHAIN_ID);
+        assertEq(target.tokenAdmin(), TOKEN_ADMIN);
         assertTrue(target.canEnter(token));
         assertFalse(target.canEnter(newToken));
     }
@@ -89,28 +73,32 @@ contract PassageTest is Test {
         // enter not allowed by default
         assertFalse(target.canEnter(newToken));
         vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
-        target.enterToken(chainId, recipient, newToken, amount);
+        target.enterToken(ROLLUP_CHAIN_ID, recipient, newToken, amount);
 
         // allow enter
+        vm.startPrank(TOKEN_ADMIN);
         vm.expectEmit();
         emit EnterConfigured(newToken, true);
         target.configureEnter(newToken, true);
+        vm.stopPrank();
 
         // enter is allowed
         assertTrue(target.canEnter(newToken));
         vm.expectEmit();
-        emit EnterToken(chainId, recipient, newToken, amount);
-        target.enterToken(chainId, recipient, newToken, amount);
+        emit EnterToken(ROLLUP_CHAIN_ID, recipient, newToken, amount);
+        target.enterToken(ROLLUP_CHAIN_ID, recipient, newToken, amount);
 
         // disallow enter
+        vm.startPrank(TOKEN_ADMIN);
         vm.expectEmit();
         emit EnterConfigured(newToken, false);
         target.configureEnter(newToken, false);
+        vm.stopPrank();
 
         // enter not allowed again
         assertFalse(target.canEnter(newToken));
         vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
-        target.enterToken(chainId, recipient, newToken, amount);
+        target.enterToken(ROLLUP_CHAIN_ID, recipient, newToken, amount);
     }
 
     function test_receive() public {
@@ -127,8 +115,8 @@ contract PassageTest is Test {
 
     function test_enter() public {
         vm.expectEmit();
-        emit Enter(chainId, recipient, amount);
-        target.enter{value: amount}(chainId, recipient);
+        emit Enter(ROLLUP_CHAIN_ID, recipient, amount);
+        target.enter{value: amount}(ROLLUP_CHAIN_ID, recipient);
     }
 
     function test_enter_defaultChain() public {
@@ -139,11 +127,11 @@ contract PassageTest is Test {
 
     function test_enterToken() public {
         vm.expectEmit();
-        emit EnterToken(chainId, recipient, token, amount);
+        emit EnterToken(ROLLUP_CHAIN_ID, recipient, token, amount);
         vm.expectCall(
             token, abi.encodeWithSelector(ERC20.transferFrom.selector, address(this), address(target), amount)
         );
-        target.enterToken(chainId, recipient, token, amount);
+        target.enterToken(ROLLUP_CHAIN_ID, recipient, token, amount);
     }
 
     function test_enterToken_defaultChain() public {
@@ -156,8 +144,9 @@ contract PassageTest is Test {
     }
 
     function test_withdraw() public {
-        TestERC20(token).mint(address(target), amount);
+        IERC20(token).transfer(address(target), amount);
 
+        vm.startPrank(TOKEN_ADMIN);
         vm.expectEmit();
         emit Withdrawal(token, recipient, amount);
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transfer.selector, recipient, amount));
@@ -165,7 +154,7 @@ contract PassageTest is Test {
     }
 }
 
-contract RollupPassageTest is Test {
+contract RollupPassageTest is SignetStdTest {
     using Address for address payable;
 
     RollupPassage public target;
@@ -178,11 +167,12 @@ contract RollupPassageTest is Test {
     event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
 
     function setUp() public virtual {
-        // deploy target
-        target = new RollupPassage(address(0));
+        // setup target
+        target = ROLLUP_PASSAGE;
 
-        // deploy token
-        token = address(new TestERC20("hi", "HI"));
+        // setup token
+        token = address(ROLLUP_WETH);
+        vm.prank(ROLLUP_MINTER);
         TestERC20(token).mint(address(this), amount * 10000);
         TestERC20(token).approve(address(target), amount * 10000);
     }

@@ -4,9 +4,10 @@ pragma solidity 0.8.26;
 // test contracts
 import {Zenith} from "../src/Zenith.sol";
 // utils
+import {SignetStdTest} from "./SignetStdTest.t.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
-contract ZenithTest is Test {
+contract ZenithTest is SignetStdTest {
     Zenith public target;
 
     Zenith.BlockHeader header;
@@ -27,12 +28,15 @@ contract ZenithTest is Test {
 
     event SequencerSet(address indexed sequencer, bool indexed permissioned);
 
-    function setUp() public {
-        target = new Zenith(address(this));
+    function setUp() public virtual {
+        target = HOST_ZENITH;
+
+        // configure a local signer as a sequencer
+        vm.prank(SEQUENCER_ADMIN);
         target.addSequencer(vm.addr(sequencerKey));
 
         // set default block values
-        header.rollupChainId = block.chainid + 1;
+        header.rollupChainId = ROLLUP_CHAIN_ID;
         header.hostBlockNumber = block.number;
         header.gasLimit = 30_000_000;
         header.rewardAddress = address(this);
@@ -43,8 +47,7 @@ contract ZenithTest is Test {
     }
 
     function test_setUp() public {
-        assertEq(target.sequencerAdmin(), address(this));
-        assertEq(target.deployBlockNumber(), block.number);
+        assertEq(target.sequencerAdmin(), SEQUENCER_ADMIN);
     }
 
     // cannot submit block with incorrect host block number
@@ -65,7 +68,7 @@ contract ZenithTest is Test {
         // sign block commitment with correct sequencer key
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(sequencerKey, commit);
 
-        assertEq(target.lastSubmittedAtBlock(header.rollupChainId), 0);
+        assertNotEq(target.lastSubmittedAtBlock(header.rollupChainId), block.number);
 
         // should emit BlockSubmitted event
         vm.expectEmit();
@@ -122,9 +125,11 @@ contract ZenithTest is Test {
         address newSequencer = vm.addr(notSequencerKey);
         assertFalse(target.isSequencer(newSequencer));
 
+        vm.startPrank(SEQUENCER_ADMIN);
         vm.expectEmit();
         emit SequencerSet(newSequencer, true);
         target.addSequencer(newSequencer);
+        vm.stopPrank();
 
         assertTrue(target.isSequencer(newSequencer));
 
@@ -141,9 +146,11 @@ contract ZenithTest is Test {
         address sequencer = vm.addr(sequencerKey);
         assertTrue(target.isSequencer(sequencer));
 
+        vm.startPrank(SEQUENCER_ADMIN);
         vm.expectEmit();
         emit SequencerSet(sequencer, false);
         target.removeSequencer(sequencer);
+        vm.stopPrank();
 
         assertFalse(target.isSequencer(sequencer));
 

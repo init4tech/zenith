@@ -11,30 +11,16 @@ import {ISignatureTransfer} from "permit2/src/interfaces/ISignatureTransfer.sol"
 import {ERC20} from "openzeppelin-contracts/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "openzeppelin-contracts/contracts/token/ERC20/extensions/ERC20Burnable.sol";
 import {Test, console2} from "forge-std/Test.sol";
+import {Address} from "openzeppelin-contracts/contracts/utils/Address.sol";
 
-contract SharedPermit2Test is Permit2Helpers {
-    // single permit
-    UsesPermit2.Permit2 permit2;
-    ISignatureTransfer.SignatureTransferDetails transferDetails;
+contract PassagePermit2Test is Permit2Helpers {
+    using Address for address payable;
 
-    function _setupSinglePermit(address token, uint256 amount) internal {
-        // create a single permit with generic details
-        permit2.permit = ISignatureTransfer.PermitTransferFrom({
-            permitted: ISignatureTransfer.TokenPermissions({token: token, amount: amount}),
-            nonce: 0,
-            deadline: block.timestamp
-        });
-        permit2.owner = owner;
-    }
-}
-
-contract PassagePermit2Test is SharedPermit2Test {
     Passage public target;
 
     // token consts
     address token;
     uint256 amount = 200;
-    uint256 chainId = 3;
     address recipient = address(0x123);
 
     event EnterToken(
@@ -42,125 +28,135 @@ contract PassagePermit2Test is SharedPermit2Test {
     );
 
     function setUp() public virtual {
-        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
-
-        // deploy token
-        token = address(new TestERC20("hi", "HI"));
-        TestERC20(token).mint(owner, amount * 10000);
-
-        // configure token for passage
-        address[] memory initialEnterTokens = new address[](2);
-        initialEnterTokens[0] = token;
-
-        // setup permit2 contract & permit details
-        _setUpPermit2(token, amount);
-        _setupSinglePermit(token, amount);
-
-        // deploy Passage
-        target = new Passage(block.chainid + 1, address(this), initialEnterTokens, address(permit2Contract));
+        // setup Passage
+        target = HOST_PASSAGE;
         vm.label(address(target), "passage");
+        vm.label(address(PERMIT2), "permit2");
+        vm.label(owner, "owner");
+
+        // setup token
+        token = address(HOST_WETH);
+        // mint WETH by sending ETH
+        payable(token).sendValue(amount * 10000);
+        // send WETH to Permit2 signer
+        TestERC20(token).transfer(owner, amount * 10000);
+        // approve permit2 from owner
+        vm.prank(owner);
+        TestERC20(token).approve(address(PERMIT2), amount * 10000);
+
+        // set basic permit details
+        singlePermit.permit.nonce = 0;
+        singlePermit.permit.deadline = block.timestamp;
+        singlePermit.owner = owner;
+        singlePermit.permit.permitted = ISignatureTransfer.TokenPermissions({token: token, amount: amount});
+        singleTransferDetails =
+            ISignatureTransfer.SignatureTransferDetails({to: address(target), requestedAmount: amount});
 
         // construct Enter witness
-        witness = target.enterWitness(chainId, recipient);
+        witness = target.enterWitness(ROLLUP_CHAIN_ID, recipient);
 
         // sign permit + witness
-        permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
-
-        // construct transfer details
-        transferDetails = ISignatureTransfer.SignatureTransferDetails({to: address(target), requestedAmount: amount});
+        singlePermit.signature = signPermit(ownerKey, address(target), singlePermit.permit, witness);
     }
 
     function test_enterTokenPermit2() public {
         vm.expectEmit();
-        emit EnterToken(chainId, recipient, token, amount);
+        emit EnterToken(ROLLUP_CHAIN_ID, recipient, token, amount);
         vm.expectCall(
-            address(permit2Contract),
+            address(PERMIT2),
             abi.encodeWithSelector(
                 ISinglePermit.permitWitnessTransferFrom.selector,
-                permit2.permit,
-                transferDetails,
+                singlePermit.permit,
+                singleTransferDetails,
                 owner,
                 witness.witnessHash,
                 witness.witnessTypeString,
-                permit2.signature
+                singlePermit.signature
             )
         );
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, address(target), amount));
-        target.enterTokenPermit2(chainId, recipient, permit2);
+        target.enterTokenPermit2(ROLLUP_CHAIN_ID, recipient, singlePermit);
     }
 
     function test_disallowedEnterPermit2() public {
         // deploy new token & approve permit2
-        address newToken = address(new TestERC20("bye", "BYE"));
+        address newToken = address(new TestERC20("bye", "BYE", 18));
+        // mint tokens to owner
         TestERC20(newToken).mint(owner, amount * 10000);
+        // approve permit2 from owner
         vm.prank(owner);
-        TestERC20(newToken).approve(address(permit2Contract), amount * 10000);
+        TestERC20(newToken).approve(address(PERMIT2), amount * 10000);
 
-        // edit permit token to new token
-        permit2.permit.permitted.token = newToken;
+        // modify permit details
+        singlePermit.permit.permitted = ISignatureTransfer.TokenPermissions({token: newToken, amount: amount});
 
-        // re-sign permit + witness
-        permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
+        // re-sign permit + same recipient witness
+        singlePermit.signature = signPermit(ownerKey, address(target), singlePermit.permit, witness);
 
         // expect revert DisallowedEnter
         vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
-        target.enterTokenPermit2(chainId, recipient, permit2);
+        target.enterTokenPermit2(ROLLUP_CHAIN_ID, recipient, singlePermit);
     }
 }
 
-contract RollupPassagePermit2Test is SharedPermit2Test {
+contract RollupPassagePermit2Test is Permit2Helpers {
     RollupPassage public target;
 
     // token consts
     address token;
     uint256 amount = 200;
-    uint256 chainId = 3;
     address recipient = address(0x123);
 
     event ExitToken(address indexed hostRecipient, address indexed token, uint256 amount);
 
     function setUp() public virtual {
-        vm.createSelectFork("https://ethereum-rpc.publicnode.com");
+        // setup RollupPassage
+        target = ROLLUP_PASSAGE;
+        vm.label(address(target), "rollup_passage");
+        vm.label(address(PERMIT2), "permit2");
+        vm.label(owner, "owner");
 
-        // deploy token & approve permit2
-        token = address(new TestERC20("hi", "HI"));
+        // setup token
+        token = address(ROLLUP_WBTC);
+        // mint tokens to owner
+        vm.prank(ROLLUP_MINTER);
         TestERC20(token).mint(owner, amount * 10000);
+        // approve permit2 from owner
+        vm.prank(owner);
+        TestERC20(token).approve(address(PERMIT2), amount * 10000);
 
-        // setup permit2 contract & permit details
-        _setUpPermit2(token, amount);
-        _setupSinglePermit(token, amount);
-
-        // deploy RollupPassage
-        target = new RollupPassage(address(permit2Contract));
-        vm.label(address(target), "passage");
+        // set basic permit details
+        singlePermit.permit.nonce = 0;
+        singlePermit.permit.deadline = block.timestamp;
+        singlePermit.owner = owner;
+        singlePermit.permit.permitted = ISignatureTransfer.TokenPermissions({token: token, amount: amount});
+        singleTransferDetails =
+            ISignatureTransfer.SignatureTransferDetails({to: address(target), requestedAmount: amount});
 
         // construct Exit witness
         witness = target.exitWitness(recipient);
 
         // sign permit + witness
-        permit2.signature = signPermit(ownerKey, address(target), permit2.permit, witness);
-
-        // construct transfer details
-        transferDetails = ISignatureTransfer.SignatureTransferDetails({to: address(target), requestedAmount: amount});
+        singlePermit.signature = signPermit(ownerKey, address(target), singlePermit.permit, witness);
     }
 
     function test_exitTokenPermit2() public {
         vm.expectEmit();
         emit ExitToken(recipient, token, amount);
         vm.expectCall(
-            address(permit2Contract),
+            address(PERMIT2),
             abi.encodeWithSelector(
                 ISinglePermit.permitWitnessTransferFrom.selector,
-                permit2.permit,
-                transferDetails,
+                singlePermit.permit,
+                singleTransferDetails,
                 owner,
                 witness.witnessHash,
                 witness.witnessTypeString,
-                permit2.signature
+                singlePermit.signature
             )
         );
         vm.expectCall(token, abi.encodeWithSelector(ERC20.transferFrom.selector, owner, address(target), amount));
         vm.expectCall(token, abi.encodeWithSelector(ERC20Burnable.burn.selector, amount));
-        target.exitTokenPermit2(recipient, permit2);
+        target.exitTokenPermit2(recipient, singlePermit);
     }
 }
