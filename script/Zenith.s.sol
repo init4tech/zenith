@@ -20,10 +20,12 @@ contract ZenithScript is Script {
         address permit2
     ) public returns (Zenith z, Passage p, Transactor t, HostOrders m) {
         vm.startBroadcast();
-        z = new Zenith(sequencerAndGasAdmin);
-        p = new Passage(defaultRollupChainId, withdrawalAdmin, initialEnterTokens, permit2);
-        t = new Transactor(defaultRollupChainId, sequencerAndGasAdmin, p, 30_000_000, 5_000_000);
-        m = new HostOrders(permit2);
+        z = new Zenith{salt: "zenith.zenith "}(sequencerAndGasAdmin);
+        p = new Passage{salt: "zenith.passage "}(defaultRollupChainId, withdrawalAdmin, initialEnterTokens, permit2);
+        t = new Transactor{salt: "zenith.transactor "}(
+            defaultRollupChainId, sequencerAndGasAdmin, p, 30_000_000, 5_000_000
+        );
+        m = new HostOrders{salt: "zenith.hostOrders "}(permit2);
     }
 
     // NOTE: script must be run using SequencerAdmin key
