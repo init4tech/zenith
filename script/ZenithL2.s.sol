@@ -27,7 +27,7 @@ contract L2Script is Script {
 
         // deploy simple erc20 tokens
         wbtc = address(new SimpleERC20{salt: "zenith.wbtc"}(MINTER, "Wrapped BTC", "WBTC", 8));
-        usdt = address(new SimpleERC20{salt: "zenith.usdt"}(MINTER, "Tether USD", "USDT", 6));
+        usdt = address(new SimpleERC20{salt: "zenith.weth"}(MINTER, "Wrapped Ether", "WETH", 18));
     }
 }
 
