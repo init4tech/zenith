@@ -35,6 +35,10 @@ contract ZenithTest is SignetStdTest {
         vm.prank(SEQUENCER_ADMIN);
         target.addSequencer(vm.addr(sequencerKey));
 
+        // advance to next block number to avoid the possibility during fork testing
+        // that a rollup block was already submitted in the current block
+        vm.rollFork(block.number + 1);
+
         // set default block values
         header.rollupChainId = ROLLUP_CHAIN_ID;
         header.hostBlockNumber = block.number;
