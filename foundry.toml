@@ -4,4 +4,10 @@ out = "out"
 libs = ["lib"]
 evm_version = "cancun"
 
+[profile.rollup]
+test= "test/rollup"
+
+[profile.host]
+test= "test/host"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

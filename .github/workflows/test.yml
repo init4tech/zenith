@@ -11,9 +11,22 @@ permissions:
   checks: read
   contents: read
   repository-projects: read
-    
+
 jobs:
   solidity-base:
     uses: init4tech/actions/.github/workflows/solidity-base.yml@main
     with:
       gas-diff-tolerance: 2 # setting the gas diff tolerance to 2%
+  fork-rollup:
+    uses: init4tech/actions/.github/workflows/solidity-base.yml@main
+    with:
+      gas-diff-tolerance: 2 # setting the gas diff tolerance to 2%
+      foundry-profile: rollup
+      fork-url: ${{ vars.RU_RPC_URL }}
+  fork-host:
+    uses: init4tech/actions/.github/workflows/solidity-base.yml@main
+    with:
+      gas-diff-tolerance: 2 # setting the gas diff tolerance to 2%
+      foundry-profile: host
+      fork-url: ${{ vars.HOST_RPC_URL }}
+

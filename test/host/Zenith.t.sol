@@ -2,9 +2,9 @@
 pragma solidity 0.8.26;
 
 // test contracts
-import {Zenith} from "../src/Zenith.sol";
+import {Zenith} from "../../src/Zenith.sol";
 // utils
-import {SignetStdTest} from "./SignetStdTest.t.sol";
+import {SignetStdTest} from "../SignetStdTest.t.sol";
 import {Test, console2} from "forge-std/Test.sol";
 
 contract ZenithTest is SignetStdTest {
@@ -34,6 +34,10 @@ contract ZenithTest is SignetStdTest {
         // configure a local signer as a sequencer
         vm.prank(SEQUENCER_ADMIN);
         target.addSequencer(vm.addr(sequencerKey));
+
+        // advance to next block number to avoid the possibility during fork testing
+        // that a rollup block was already submitted in the current block
+        vm.roll(block.number + 1);
 
         // set default block values
         header.rollupChainId = ROLLUP_CHAIN_ID;
