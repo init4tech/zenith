@@ -72,4 +72,20 @@ contract GnosisScript is Script {
     function addressToBytes32(address addr) internal pure returns (bytes32) {
         return bytes32(uint256(uint160(addr)));
     }
+
+    // deploy a safe instance to the rollup with the given owners, threshold, and saltnonce.
+    // populates the address of the gnosis factory, singleton, and fallback handler.
+    function deployRollupSafeInstance(address[] memory owners, uint256 threshold, uint256 saltNonce) public {
+        address factory = 0x8ff5C1D5233CA055cD536b2b87294d17f9160801;
+        address singleton = 0x2f2965efaCFc64Fb85dF1902260eB25C0c996195;
+        address fallbackHandler = 0xe59838EB7f251489b50940BD640326215420B936;
+
+        SafeSetup memory setup;
+        setup.owners = owners;
+        setup.threshold = threshold;
+        setup.fallbackHandler = fallbackHandler;
+        setup.saltNonce = saltNonce;
+
+        deploySafeInstance(factory, singleton, setup);
+    }
 }
