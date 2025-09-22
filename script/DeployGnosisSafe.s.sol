@@ -80,17 +80,11 @@ contract GnosisScript is Script {
         address singleton = 0x2f2965efaCFc64Fb85dF1902260eB25C0c996195;
         address fallbackHandler = 0xe59838EB7f251489b50940BD640326215420B936;
 
-        SafeSetup memory setup = SafeSetup({
-            owners: owners,
-            threshold: threshold,
-            to: address(0),
-            data: "",
-            fallbackHandler: fallbackHandler,
-            paymentToken: address(0),
-            payment: 0,
-            paymentReceiver: payable(address(0)),
-            saltNonce: saltNonce
-        });
+        SafeSetup memory setup;
+        setup.owners = owners;
+        setup.threshold = threshold;
+        setup.fallbackHandler = fallbackHandler;
+        setup.saltNonce = saltNonce;
 
         deploySafeInstance(factory, singleton, setup);
     }
