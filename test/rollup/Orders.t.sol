@@ -149,7 +149,7 @@ contract OrdersTest is SignetStdTest {
     }
 
     function test_sweepETH() public {
-        uint256 prevBalance = address(target).balance; 
+        uint256 prevBalance = address(target).balance;
 
         // initiate an ETH order
         inputs[0].token = address(0);
