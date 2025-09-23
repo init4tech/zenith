@@ -11,19 +11,22 @@ import {Script} from "forge-std/Script.sol";
 
 contract ZenithScript is Script {
     // deploy:
-    // forge script ZenithScript --sig "deploy(uint256,address,address[],address,address)" --rpc-url $RPC_URL --etherscan-api-key $ETHERSCAN_API_KEY --private-key $PRIVATE_KEY --broadcast --verify $ROLLUP_CHAIN_ID $WITHDRAWAL_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $SEQUENCER_AND_GAS_ADMIN_ADDRESS $PERMIT_2
+    // forge script ZenithScript --sig "deploy(uint256,address,address,address,address[],address,uint256,uint256)" --rpc-url $RPC_URL --broadcast $ROLLUP_CHAIN_ID $SEQUENCER_ADMIN_ADDRESS $WITHDRAWAL_ADMIN_ADDRESS $GAS_ADMIN_ADDRESS $INITIAL_ENTER_TOKENS_ARRAY $PERMIT2_ADDRESS $PER_BLOCK_GAS_LIMIT $PER_TRANSACT_GAS_LIMIT [signing args] [--etherscan-api-key $ETHERSCAN_API_KEY --verify]
     function deploy(
         uint256 defaultRollupChainId,
+        address sequencerAdmin,
         address withdrawalAdmin,
+        address gasAdmin,
         address[] memory initialEnterTokens,
-        address sequencerAndGasAdmin,
-        address permit2
+        address permit2,
+        uint256 perBlockGasLimit,
+        uint256 perTransactGasLimit
     ) public returns (Zenith z, Passage p, Transactor t, HostOrders m) {
         vm.startBroadcast();
-        z = new Zenith{salt: "zenith.zenith "}(sequencerAndGasAdmin);
+        z = new Zenith{salt: "zenith.zenith "}(sequencerAdmin);
         p = new Passage{salt: "zenith.passage "}(defaultRollupChainId, withdrawalAdmin, initialEnterTokens, permit2);
         t = new Transactor{salt: "zenith.transactor "}(
-            defaultRollupChainId, sequencerAndGasAdmin, p, 30_000_000, 5_000_000
+            defaultRollupChainId, gasAdmin, p, perBlockGasLimit, perTransactGasLimit
         );
         m = new HostOrders{salt: "zenith.hostOrders "}(permit2);
     }
