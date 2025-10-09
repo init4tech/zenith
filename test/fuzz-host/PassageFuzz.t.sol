@@ -38,11 +38,6 @@ contract PassageFuzzTest is SignetStdTest {
         // mint WETH by sending ETH
         payable(configuredToken).sendValue(10000 ether);
         TestERC20(configuredToken).approve(address(target), 10000 ether);
-
-        // // deploy new token that's not configured on Passage
-        // newToken = address(new TestERC20("bye", "BYE", 18));
-        // TestERC20(newToken).mint(address(this), amount * 10000);
-        // TestERC20(newToken).approve(address(target), amount * 10000);
     }
 
     // only the token admin can add or remove new tokens from Passage
@@ -59,11 +54,17 @@ contract PassageFuzzTest is SignetStdTest {
         target.withdraw(token, recipient, amount);
     }
 
-    // function test_disallowedEnter(address recipient, address newToken, uint256 amount) public {
-    //     vm.assume(target.canEnter(newToken) == false);
-    //     vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
-    //     target.enterToken(recipient, newToken, amount);
-    // }
+    function test_disallowedEnter(address recipient, address newToken, uint256 amount) public {
+        vm.assume(amount > 0);
+        vm.assume(target.canEnter(newToken) == false);
+        vm.mockCall(
+            newToken,
+            abi.encodeWithSelector(IERC20.transferFrom.selector, address(this), address(target), amount),
+            abi.encode(true)
+        );
+        vm.expectRevert(abi.encodeWithSelector(Passage.DisallowedEnter.selector, newToken));
+        target.enterToken(recipient, newToken, amount);
+    }
 
     function test_receive(uint256 amount) public {
         vm.assume(amount > 0 && amount < payable(address(this)).balance);
