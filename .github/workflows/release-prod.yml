@@ -1,0 +1,36 @@
+name: Release and Deploy Contract (Production)
+
+on:
+  workflow_dispatch:
+
+# chain id: 519
+# sequencer admin: 0x00D9B38F71d319923B4bfB008FEBF78F2bf5C3dD
+# withdrawal admin: 0xfa963E3D8dfD6817aAF70140C1fbAEA094090Fa0
+# gas admin: 0x7b6DCeb408Ef51977Ec7aF2bE255b9Ed19Da9b3b
+# initial enter tokens: [0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 0xdAC17F958D2ee523a2206206994597C13D831ec7]
+# permit2: 0x000000000022D473030F116dDEE9F6B43aC78BA3
+# per block gas limit: 30000000
+# per transact gas limit: 5000000
+
+jobs:
+  deploy-contract:
+    uses: init4tech/actions/.github/workflows/solidity-deployment.yml@main
+    permissions:
+      contents: write
+      id-token: write
+    with:
+      network: mainnet
+      environment: prod
+      forge-deployment-contract: ZenithScript
+      forge-deployment-script-file: Zenith.s.sol
+      forge-deployment-signature: "deploy(uint256,address,address,address,address[],address,uint256,uint256)"
+      forge-deployment-params: "519 0x00D9B38F71d319923B4bfB008FEBF78F2bf5C3dD 0xfa963E3D8dfD6817aAF70140C1fbAEA094090Fa0 0x7b6DCeb408Ef51977Ec7aF2bE255b9Ed19Da9b3b [0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599, 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2, 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48, 0xdAC17F958D2ee523a2206206994597C13D831ec7] 0x000000000022D473030F116dDEE9F6B43aC78BA3 30000000 5000000"
+      etherscan-url: https://etherscan.io
+      chain-id: 1
+      deployer-address: ${{ vars.MAINNET_DEPLOYER_ADDRESS }}
+    secrets:
+      aws-deployer-role: ${{ secrets.AWS_DEPLOYER_ROLE }}
+      kms-key-id: ${{ secrets.MAINNET_DEPLOYER_KEY_ID }}
+      rpc-url: ${{ secrets.MAINNET_RPC_URL }}
+      etherscan-api-key: ${{ secrets.ETHERSCAN_API_KEY }}
+
