@@ -55,6 +55,40 @@ contract OrdersTest is SignetStdTest {
         deadline = block.timestamp;
     }
 
+    // zero inputs or outptus
+    function test_initiate_empty() public {
+        IOrders.Input[] memory emptyInputs = new IOrders.Input[](0);
+        IOrders.Output[] memory emptyOutputs = new IOrders.Output[](0);
+
+        // expect Order event is initiated, ERC20 is transferred
+        vm.expectEmit();
+        emit Order(deadline, emptyInputs, emptyOutputs);
+        target.initiate(deadline, emptyInputs, emptyOutputs);
+    }
+
+    // empty inputs, non-empty outputs
+    function test_initiate_emptyInputs() public {
+        IOrders.Input[] memory emptyInputs = new IOrders.Input[](0);
+
+        // expect Order event is initiated, ERC20 is transferred
+        vm.expectEmit();
+        emit Order(deadline, emptyInputs, outputs);
+        target.initiate(deadline, emptyInputs, outputs);
+    }
+
+    // empty outputs, non-empty inputs
+    function test_initiate_emptyOutputs() public {
+        IOrders.Output[] memory emptyOutputs = new IOrders.Output[](0);
+
+        // expect Order event is initiated, ERC20 is transferred
+        vm.expectEmit();
+        emit Order(deadline, inputs, emptyOutputs);
+        vm.expectCall(
+            token, abi.encodeWithSelector(ERC20.transferFrom.selector, address(this), address(target), amount)
+        );
+        target.initiate(deadline, inputs, emptyOutputs);
+    }
+
     // input ERC20
     function test_initiate_ERC20() public {
         // expect Order event is initiated, ERC20 is transferred
