@@ -10,4 +10,10 @@ test= "test/rollup"
 [profile.host]
 test= "test/host"
 
+[profile.fuzz-rollup]
+test= "test/fuzz-rollup"
+
+[profile.fuzz-host]
+test= "test/fuzz-host"
+
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

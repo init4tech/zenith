@@ -9,6 +9,52 @@ import {HostOrders} from "../src/orders/HostOrders.sol";
 import {Passage} from "../src/passage/Passage.sol";
 import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
+/// @title ParmigianaConstants
+/// @author init4
+/// @notice Constants for the Parmigiana testnet.
+/// @dev These constants are used to configure the SignetStd contract in its
+///      constructor, if the chain ID matches the Parmigiana testnet chain ID.
+library ParmigianaConstants {
+    /// @notice The Parmigiana Rollup chain ID.
+    uint32 constant ROLLUP_CHAIN_ID = 88888;
+    /// @notice The Rollup Passage contract for the Parmigiana testnet.
+    RollupPassage constant ROLLUP_PASSAGE = RollupPassage(payable(0x0000000000007369676E65742D70617373616765));
+    /// @notice The Rollup Orders contract for the Parmigiana testnet.
+    RollupOrders constant ROLLUP_ORDERS = RollupOrders(0x000000000000007369676E65742D6f7264657273);
+    /// @notice WETH token address for the Parmigiana testnet.
+    IERC20 constant ROLLUP_WETH = IERC20(0x0000000000000000007369676e65742d77657468);
+    /// @notice WBTC token address for the Parmigiana testnet.
+    IERC20 constant ROLLUP_WBTC = IERC20(0x0000000000000000007369676e65742D77627463);
+    /// @notice WUSD token address for the Parmigiana testnet.
+    IERC20 constant ROLLUP_WUSD = IERC20(0x0000000000000000007369676e65742D77757364);
+
+    /// @notice The Parmigiana host chain ID.
+    uint32 constant HOST_CHAIN_ID = 3151908;
+    /// @notice The Passage contract on the host network.
+    Passage constant HOST_PASSAGE = Passage(payable(0x28524D2a753925Ef000C3f0F811cDf452C6256aF));
+    /// @notice The Orders contract on the host network.
+    HostOrders constant HOST_ORDERS = HostOrders(0x96f44ddc3Bc8892371305531F1a6d8ca2331fE6C);
+    /// @notice The Zenith contract for the Parmigiana testnet.
+    Zenith constant HOST_ZENITH = Zenith(0x143A5BE4E559cA49Dbf0966d4B9C398425C5Fc19);
+    /// @notice The Transactor contract on the host network.
+    Transactor constant HOST_TRANSACTOR = Transactor(0x0B4fc18e78c585687E01c172a1087Ea687943db9);
+    /// @notice USDC token for the Parmigiana testnet host chain.
+    IERC20 constant HOST_USDC = IERC20(0x65Fb255585458De1F9A246b476aa8d5C5516F6fd);
+    /// @notice USDT token for the Parmigiana testnet host chain.
+    IERC20 constant HOST_USDT = IERC20(0xb9Df1b911B6cf6935b2a918Ba03dF2372E94e267);
+    /// @notice WBTC token for the Parmigiana testnet host chain.
+    IERC20 constant HOST_WBTC = IERC20(0xfb29F7d7a4CE607D6038d44150315e5F69BEa08A);
+    /// @notice WETH token for the Parmigiana testnet host chain.
+    IERC20 constant HOST_WETH = IERC20(0xD1278f17e86071f1E658B656084c65b7FD3c90eF);
+
+    /// @notice The token admin address, used for configuring tokens on Passage and for withdrawals.
+    address constant TOKEN_ADMIN = address(0x11Aa4EBFbf7a481617c719a2Df028c9DA1a219aa);
+    /// @notice The gas admin address, used for configuring gas limits on Transactor.
+    address constant GAS_ADMIN = address(0x29403F107781ea45Bf93710abf8df13F67f2008f);
+    /// @notice The sequencer admin address, used for configuring sequencer settings on Zenith.
+    address constant SEQUENCER_ADMIN = address(0x29403F107781ea45Bf93710abf8df13F67f2008f);
+}
+
 /// @title PecorinoConstants
 /// @author init4
 /// @notice Constants for the Pecorino testnet.
@@ -111,28 +157,63 @@ contract SignetStd {
 
     function setupStd() internal virtual {
         // Auto-configure based on the chain ID.
-        if (block.chainid == PecorinoConstants.ROLLUP_CHAIN_ID || block.chainid == PecorinoConstants.HOST_CHAIN_ID) {
-            ROLLUP_CHAIN_ID = PecorinoConstants.ROLLUP_CHAIN_ID;
-            ROLLUP_PASSAGE = PecorinoConstants.ROLLUP_PASSAGE;
-            ROLLUP_ORDERS = PecorinoConstants.ROLLUP_ORDERS;
-            ROLLUP_WETH = PecorinoConstants.ROLLUP_WETH;
-            ROLLUP_WBTC = PecorinoConstants.ROLLUP_WBTC;
-            ROLLUP_WUSD = PecorinoConstants.ROLLUP_WUSD;
-
-            HOST_CHAIN_ID = PecorinoConstants.HOST_CHAIN_ID;
-            HOST_PASSAGE = PecorinoConstants.HOST_PASSAGE;
-            HOST_ORDERS = PecorinoConstants.HOST_ORDERS;
-            HOST_ZENITH = PecorinoConstants.HOST_ZENITH;
-            HOST_TRANSACTOR = PecorinoConstants.HOST_TRANSACTOR;
-            HOST_USDC = PecorinoConstants.HOST_USDC;
-            HOST_USDT = PecorinoConstants.HOST_USDT;
-            HOST_WBTC = PecorinoConstants.HOST_WBTC;
-            HOST_WETH = PecorinoConstants.HOST_WETH;
-            TOKEN_ADMIN = PecorinoConstants.TOKEN_ADMIN;
-            GAS_ADMIN = PecorinoConstants.GAS_ADMIN;
-            SEQUENCER_ADMIN = PecorinoConstants.SEQUENCER_ADMIN;
+        // Parmigiana testnet (rollup chain ID 88888)
+        if (block.chainid == ParmigianaConstants.ROLLUP_CHAIN_ID) {
+            _setupParmigiana();
+        }
+        // Pecorino testnet (rollup chain ID 14174)
+        else if (block.chainid == PecorinoConstants.ROLLUP_CHAIN_ID) {
+            _setupPecorino();
+        }
+        // Host chain ID (3151908) - shared by both testnets, default to Parmigiana
+        else if (block.chainid == ParmigianaConstants.HOST_CHAIN_ID) {
+            _setupParmigiana();
         } else {
             revert("Unsupported chain ID");
         }
+    }
+
+    function _setupParmigiana() internal {
+        ROLLUP_CHAIN_ID = ParmigianaConstants.ROLLUP_CHAIN_ID;
+        ROLLUP_PASSAGE = ParmigianaConstants.ROLLUP_PASSAGE;
+        ROLLUP_ORDERS = ParmigianaConstants.ROLLUP_ORDERS;
+        ROLLUP_WETH = ParmigianaConstants.ROLLUP_WETH;
+        ROLLUP_WBTC = ParmigianaConstants.ROLLUP_WBTC;
+        ROLLUP_WUSD = ParmigianaConstants.ROLLUP_WUSD;
+
+        HOST_CHAIN_ID = ParmigianaConstants.HOST_CHAIN_ID;
+        HOST_PASSAGE = ParmigianaConstants.HOST_PASSAGE;
+        HOST_ORDERS = ParmigianaConstants.HOST_ORDERS;
+        HOST_ZENITH = ParmigianaConstants.HOST_ZENITH;
+        HOST_TRANSACTOR = ParmigianaConstants.HOST_TRANSACTOR;
+        HOST_USDC = ParmigianaConstants.HOST_USDC;
+        HOST_USDT = ParmigianaConstants.HOST_USDT;
+        HOST_WBTC = ParmigianaConstants.HOST_WBTC;
+        HOST_WETH = ParmigianaConstants.HOST_WETH;
+        TOKEN_ADMIN = ParmigianaConstants.TOKEN_ADMIN;
+        GAS_ADMIN = ParmigianaConstants.GAS_ADMIN;
+        SEQUENCER_ADMIN = ParmigianaConstants.SEQUENCER_ADMIN;
+    }
+
+    function _setupPecorino() internal {
+        ROLLUP_CHAIN_ID = PecorinoConstants.ROLLUP_CHAIN_ID;
+        ROLLUP_PASSAGE = PecorinoConstants.ROLLUP_PASSAGE;
+        ROLLUP_ORDERS = PecorinoConstants.ROLLUP_ORDERS;
+        ROLLUP_WETH = PecorinoConstants.ROLLUP_WETH;
+        ROLLUP_WBTC = PecorinoConstants.ROLLUP_WBTC;
+        ROLLUP_WUSD = PecorinoConstants.ROLLUP_WUSD;
+
+        HOST_CHAIN_ID = PecorinoConstants.HOST_CHAIN_ID;
+        HOST_PASSAGE = PecorinoConstants.HOST_PASSAGE;
+        HOST_ORDERS = PecorinoConstants.HOST_ORDERS;
+        HOST_ZENITH = PecorinoConstants.HOST_ZENITH;
+        HOST_TRANSACTOR = PecorinoConstants.HOST_TRANSACTOR;
+        HOST_USDC = PecorinoConstants.HOST_USDC;
+        HOST_USDT = PecorinoConstants.HOST_USDT;
+        HOST_WBTC = PecorinoConstants.HOST_WBTC;
+        HOST_WETH = PecorinoConstants.HOST_WETH;
+        TOKEN_ADMIN = PecorinoConstants.TOKEN_ADMIN;
+        GAS_ADMIN = PecorinoConstants.GAS_ADMIN;
+        SEQUENCER_ADMIN = PecorinoConstants.SEQUENCER_ADMIN;
     }
 }
