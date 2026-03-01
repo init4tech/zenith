@@ -99,8 +99,9 @@ contract Permit2Helpers is SignetStdTest {
         bytes32 _witness,
         string memory witnessTypeString
     ) internal pure returns (bytes32) {
-        bytes32 typeHash =
-            keccak256(abi.encodePacked(_PERMIT_BATCH_WITNESS_TRANSFER_FROM_TYPEHASH_STUB, witnessTypeString));
+        bytes32 typeHash = keccak256(
+            abi.encodePacked(_PERMIT_BATCH_WITNESS_TRANSFER_FROM_TYPEHASH_STUB, witnessTypeString)
+        );
 
         uint256 numPermitted = permit.permitted.length;
         bytes32[] memory tokenPermissionHashes = new bytes32[](numPermitted);
@@ -133,9 +134,10 @@ contract Permit2Helpers is SignetStdTest {
     /// @notice Returns the domain separator for the current chain.
     /// @dev Uses cached version if chainid and address are unchanged from construction.
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
-        return block.chainid == _CACHED_CHAIN_ID
-            ? _CACHED_DOMAIN_SEPARATOR
-            : _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME);
+        return
+            block.chainid == _CACHED_CHAIN_ID
+                ? _CACHED_DOMAIN_SEPARATOR
+                : _buildDomainSeparator(_TYPE_HASH, _HASHED_NAME);
     }
 
     /// @notice Builds a domain separator using the current chainId and contract address.

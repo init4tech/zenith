@@ -33,8 +33,9 @@ abstract contract PassagePermit2 is UsesPermit2 {
         pure
         returns (Witness memory _witness)
     {
-        _witness.witnessHash =
-            keccak256(abi.encode(_ENTER_WITNESS_TYPEHASH, EnterWitness(rollupChainId, rollupRecipient)));
+        _witness.witnessHash = keccak256(
+            abi.encode(_ENTER_WITNESS_TYPEHASH, EnterWitness(rollupChainId, rollupRecipient))
+        );
         _witness.witnessTypeString = _ENTER_WITNESS_TYPESTRING;
     }
 
@@ -49,14 +50,15 @@ abstract contract PassagePermit2 is UsesPermit2 {
     /// @param _witness - the hashed witness and its typestring.
     /// @param permit2 - the Permit2 information.
     function _permitWitnessTransferFrom(Witness memory _witness, Permit2 calldata permit2) internal {
-        ISignatureTransfer(permit2Contract).permitWitnessTransferFrom(
-            permit2.permit,
-            _selfTransferDetails(permit2.permit.permitted.amount),
-            permit2.owner,
-            _witness.witnessHash,
-            _witness.witnessTypeString,
-            permit2.signature
-        );
+        ISignatureTransfer(permit2Contract)
+            .permitWitnessTransferFrom(
+                permit2.permit,
+                _selfTransferDetails(permit2.permit.permitted.amount),
+                permit2.owner,
+                _witness.witnessHash,
+                _witness.witnessTypeString,
+                permit2.signature
+            );
     }
 
     /// @notice Construct TransferDetails transferring a balance to this contract, for passing to permit2.

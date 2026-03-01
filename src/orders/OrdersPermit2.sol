@@ -37,14 +37,15 @@ abstract contract OrdersPermit2 is UsesPermit2 {
         ISignatureTransfer.SignatureTransferDetails[] memory transferDetails,
         Permit2Batch calldata permit2
     ) internal {
-        ISignatureTransfer(permit2Contract).permitWitnessTransferFrom(
-            permit2.permit,
-            transferDetails,
-            permit2.owner,
-            _witness.witnessHash,
-            _witness.witnessTypeString,
-            permit2.signature
-        );
+        ISignatureTransfer(permit2Contract)
+            .permitWitnessTransferFrom(
+                permit2.permit,
+                transferDetails,
+                permit2.owner,
+                _witness.witnessHash,
+                _witness.witnessTypeString,
+                permit2.signature
+            );
     }
 
     /// @notice transform Output and TokenPermissions structs to TransferDetails structs, for passing to permit2.

@@ -58,7 +58,10 @@ contract PassageHandler is Test {
     }
 
     /// @notice Enter ETH into the rollup
-    function enterEth(uint256 actorIndex, uint256 amount, uint256 rollupChainId, address recipient) external useActor(actorIndex) {
+    function enterEth(uint256 actorIndex, uint256 amount, uint256 rollupChainId, address recipient)
+        external
+        useActor(actorIndex)
+    {
         amount = bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
 
@@ -197,12 +200,14 @@ contract PassageInvariantTest is StdInvariant, Test {
     function invariant_tokenBalanceAccounting() public view {
         // Check token1
         uint256 actualBalance1 = token1.balanceOf(address(passage));
-        uint256 expectedBalance1 = handler.totalTokenEntered(address(token1)) - handler.totalTokenWithdrawn(address(token1));
+        uint256 expectedBalance1 =
+            handler.totalTokenEntered(address(token1)) - handler.totalTokenWithdrawn(address(token1));
         assertEq(actualBalance1, expectedBalance1, "Token1 balance mismatch - funds may be lost or created");
 
         // Check token2
         uint256 actualBalance2 = token2.balanceOf(address(passage));
-        uint256 expectedBalance2 = handler.totalTokenEntered(address(token2)) - handler.totalTokenWithdrawn(address(token2));
+        uint256 expectedBalance2 =
+            handler.totalTokenEntered(address(token2)) - handler.totalTokenWithdrawn(address(token2));
         assertEq(actualBalance2, expectedBalance2, "Token2 balance mismatch - funds may be lost or created");
     }
 

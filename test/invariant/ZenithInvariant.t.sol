@@ -71,9 +71,8 @@ contract ZenithHandler is Test {
     /// @notice Add a new sequencer (admin only action)
     function addSequencer(uint256 newSequencerKey) external {
         // Bound key to valid range
-        newSequencerKey = bound(
-            newSequencerKey, 1, 115792089237316195423570985008687907852837564279074904382605163141518161494336
-        );
+        newSequencerKey =
+            bound(newSequencerKey, 1, 115792089237316195423570985008687907852837564279074904382605163141518161494336);
 
         address newSequencer = vm.addr(newSequencerKey);
 
