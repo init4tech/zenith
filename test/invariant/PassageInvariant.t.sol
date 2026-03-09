@@ -108,6 +108,7 @@ contract PassageHandler is Test {
         amount = _bound(amount, 0, address(passage).balance);
         if (amount == 0) return;
         if (recipient == address(0)) return;
+        if (recipient == address(passage)) return;
 
         vm.prank(tokenAdmin);
         passage.withdraw(address(0), recipient, amount);
@@ -121,6 +122,7 @@ contract PassageHandler is Test {
         amount = _bound(amount, 0, token.balanceOf(address(passage)));
         if (amount == 0) return;
         if (recipient == address(0)) return;
+        if (recipient == address(passage)) return;
 
         vm.prank(tokenAdmin);
         passage.withdraw(address(token), recipient, amount);
