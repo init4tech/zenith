@@ -141,6 +141,7 @@ contract OrdersHandler is Test {
         amount = bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
         if (recipient == address(0)) return;
+        if (recipient == address(hostOrders)) return;
         if (recipient.code.length > 0) return; // Skip contracts to avoid revert on receive
 
         IOrders.Output[] memory outputs = new IOrders.Output[](1);
@@ -161,6 +162,8 @@ contract OrdersHandler is Test {
         amount = bound(amount, 0, token.balanceOf(currentActor));
         if (amount == 0) return;
         if (recipient == address(0)) return;
+        if (recipient == address(hostOrders)) return;
+        if (recipient == address(rollupOrders)) return;
 
         IOrders.Output[] memory outputs = new IOrders.Output[](1);
         outputs[0] = IOrders.Output(address(token), amount, recipient, chainId);

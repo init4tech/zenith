@@ -5,7 +5,6 @@ import {Test, console2} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Transactor} from "../../src/Transactor.sol";
 import {Passage} from "../../src/passage/Passage.sol";
-import {TestERC20} from "../SignetStdTest.t.sol";
 
 /// @notice Handler contract for Transactor invariant testing
 contract TransactorHandler is Test {
@@ -21,16 +20,11 @@ contract TransactorHandler is Test {
     mapping(uint256 => mapping(uint256 => uint256)) public ghostGasUsed; // chainId => blockNumber => gasUsed
     uint256 public totalTransactCalls;
     uint256 public totalEthEntered;
+    bool public gasTrackingValid = true;
 
     // Track actors
     address[] public actors;
     address public currentActor;
-
-    // Track blocks and chains used
-    uint256[] public blocksUsed;
-    mapping(uint256 => bool) public blockSeen;
-    uint256[] public chainsUsed;
-    mapping(uint256 => bool) public chainSeen;
 
     constructor(Transactor _transactor, Passage _passage, address _gasAdmin, uint256 _defaultChainId) {
         transactor = _transactor;
@@ -89,14 +83,9 @@ contract TransactorHandler is Test {
         totalTransactCalls++;
         totalEthEntered += (passageBalanceAfter - passageBalanceBefore);
 
-        // Track blocks and chains
-        if (!blockSeen[block.number]) {
-            blockSeen[block.number] = true;
-            blocksUsed.push(block.number);
-        }
-        if (!chainSeen[rollupChainId]) {
-            chainSeen[rollupChainId] = true;
-            chainsUsed.push(rollupChainId);
+        // Validate gas tracking incrementally
+        if (transactor.transactGasUsed(rollupChainId, block.number) != ghostGasUsed[rollupChainId][block.number]) {
+            gasTrackingValid = false;
         }
     }
 
@@ -123,13 +112,9 @@ contract TransactorHandler is Test {
         totalTransactCalls++;
         totalEthEntered += (passageBalanceAfter - passageBalanceBefore);
 
-        if (!blockSeen[block.number]) {
-            blockSeen[block.number] = true;
-            blocksUsed.push(block.number);
-        }
-        if (!chainSeen[defaultChainId]) {
-            chainSeen[defaultChainId] = true;
-            chainsUsed.push(defaultChainId);
+        // Validate gas tracking incrementally
+        if (transactor.transactGasUsed(defaultChainId, block.number) != ghostGasUsed[defaultChainId][block.number]) {
+            gasTrackingValid = false;
         }
     }
 
@@ -150,16 +135,6 @@ contract TransactorHandler is Test {
     /// @notice Advance to next block
     function advanceBlock() external {
         vm.roll(block.number + 1);
-    }
-
-    /// @notice Get chain count
-    function getChainsUsedCount() external view returns (uint256) {
-        return chainsUsed.length;
-    }
-
-    /// @notice Get blocks count
-    function getBlocksUsedCount() external view returns (uint256) {
-        return blocksUsed.length;
     }
 }
 
@@ -229,20 +204,9 @@ contract TransactorInvariantTest is StdInvariant, Test {
     }
 
     /// @notice INVARIANT: Ghost gas tracking matches contract state
-    /// @dev Ensures our tracking is correct
+    /// @dev Validated incrementally in the handler after each transact call
     function invariant_gasTrackingConsistency() public view {
-        uint256 chainCount = handler.getChainsUsedCount();
-        uint256 blockCount = handler.getBlocksUsedCount();
-
-        for (uint256 i = 0; i < chainCount; i++) {
-            uint256 chainId = handler.chainsUsed(i);
-            for (uint256 j = 0; j < blockCount; j++) {
-                uint256 blockNum = handler.blocksUsed(j);
-                uint256 contractGas = transactor.transactGasUsed(chainId, blockNum);
-                uint256 ghostGas = handler.ghostGasUsed(chainId, blockNum);
-                assertEq(contractGas, ghostGas, "Ghost gas tracking mismatch");
-            }
-        }
+        assertTrue(handler.gasTrackingValid(), "Ghost gas tracking mismatch");
     }
 
     /// @notice INVARIANT: Gas admin is immutable

@@ -235,6 +235,10 @@ contract PassageInvariantTest is StdInvariant, Test {
 
         uint256 balanceAfter = address(passage).balance;
         assertEq(balanceAfter, balanceBefore + 1 ether, "Failed to receive ETH");
+
+        // Clean up: withdraw the test ETH so it doesn't pollute ghost variable accounting
+        vm.prank(tokenAdmin);
+        passage.withdraw(address(0), tester, 1 ether);
     }
 
     /// @notice INVARIANT: Withdrawal cannot exceed balance
