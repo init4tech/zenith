@@ -88,7 +88,7 @@ contract OrdersFuzzTest is SignetStdTest {
     function test_sweepETH(uint256 deadline, uint256 amount, address recipient, IOrders.Output memory output) public {
         vm.assume(deadline >= block.timestamp);
         vm.assume(amount < type(uint256).max - 1000 ether); // prevent overflow in vm.deal
-        vm.assume(recipient.code.length == 0 && uint160(recipient) > 0x09); // recipient is non-precompile EOA
+        vm.assume(recipient.code.length == 0 && uint160(recipient) > 0xff); // recipient is non-precompile EOA
         vm.assume(address(recipient).balance == 0); // recipient starts with zero balance
         vm.deal(address(this), amount); // give contract some ETH
 
@@ -112,6 +112,7 @@ contract OrdersFuzzTest is SignetStdTest {
 
     function test_sweepERC20(address recipient, address token, uint256 amount) public {
         vm.assume(token != address(0));
+        vm.assume(token != address(vm));
 
         vm.mockCall(
             token, abi.encodeWithSelector(ERC20.transfer.selector, address(recipient), amount), abi.encode(true)
@@ -126,7 +127,7 @@ contract OrdersFuzzTest is SignetStdTest {
 
     function test_fill(IOrders.Output memory output) public {
         vm.assume(output.amount < type(uint256).max - 1000 ether); // prevent overflow in vm.deal
-        vm.assume(output.recipient.code.length == 0 && uint160(output.recipient) > 0x09); // recipient is non-precompile EOA
+        vm.assume(output.recipient.code.length == 0 && uint160(output.recipient) > 0xff); // recipient is non-precompile EOA
         vm.assume(output.token != address(vm));
         vm.deal(address(this), output.amount); // give contract some ETH
 
@@ -162,7 +163,7 @@ contract OrdersFuzzTest is SignetStdTest {
 
     function test_fill_underflowETH(uint256 amount, address recipient, uint32 chainId) public {
         vm.assume(amount > 0 && amount < type(uint256).max - 1000 ether); // prevent overflow in vm.deal
-        vm.assume(recipient.code.length == 0 && uint160(recipient) > 0x09); // recipient is non-precompile EOA
+        vm.assume(recipient.code.length == 0 && uint160(recipient) > 0xff); // recipient is non-precompile EOA
         vm.deal(address(this), amount); // give contract some ETH
 
         IOrders.Output[] memory outputs = new IOrders.Output[](2);
@@ -175,7 +176,7 @@ contract OrdersFuzzTest is SignetStdTest {
     }
 
     function test_fill_zeroETH(address recipient, uint32 chainId) public {
-        vm.assume(recipient.code.length == 0 && uint160(recipient) > 0x09); // recipient is non-precompile EOA
+        vm.assume(recipient.code.length == 0 && uint160(recipient) > 0xff); // recipient is non-precompile EOA
 
         IOrders.Output memory output = IOrders.Output(address(0), 0, recipient, chainId);
         IOrders.Output[] memory outputs = new IOrders.Output[](1);
