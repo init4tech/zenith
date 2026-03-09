@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Zenith} from "../../src/Zenith.sol";
 
@@ -72,7 +72,7 @@ contract ZenithHandler is Test {
     function addSequencer(uint256 newSequencerKey) external {
         // Bound key to valid range
         newSequencerKey =
-            bound(newSequencerKey, 1, 115792089237316195423570985008687907852837564279074904382605163141518161494336);
+            _bound(newSequencerKey, 1, 115792089237316195423570985008687907852837564279074904382605163141518161494336);
 
         address newSequencer = vm.addr(newSequencerKey);
 

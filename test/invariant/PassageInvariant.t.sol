@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Passage} from "../../src/passage/Passage.sol";
 import {TestERC20} from "../SignetStdTest.t.sol";
@@ -62,7 +62,7 @@ contract PassageHandler is Test {
         external
         useActor(actorIndex)
     {
-        amount = bound(amount, 0, currentActor.balance);
+        amount = _bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
 
         uint256 balanceBefore = address(passage).balance;
@@ -75,7 +75,7 @@ contract PassageHandler is Test {
 
     /// @notice Enter ETH via direct transfer (receive/fallback)
     function enterEthDirect(uint256 actorIndex, uint256 amount) external useActor(actorIndex) {
-        amount = bound(amount, 0, currentActor.balance);
+        amount = _bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
 
         uint256 balanceBefore = address(passage).balance;
@@ -92,7 +92,7 @@ contract PassageHandler is Test {
         useActor(actorIndex)
     {
         TestERC20 token = useToken1 ? token1 : token2;
-        amount = bound(amount, 0, token.balanceOf(currentActor));
+        amount = _bound(amount, 0, token.balanceOf(currentActor));
         if (amount == 0) return;
         if (!passage.canEnter(address(token))) return;
 
@@ -105,7 +105,7 @@ contract PassageHandler is Test {
 
     /// @notice Admin withdraws ETH
     function withdrawEth(uint256 amount, address recipient) external {
-        amount = bound(amount, 0, address(passage).balance);
+        amount = _bound(amount, 0, address(passage).balance);
         if (amount == 0) return;
         if (recipient == address(0)) return;
 
@@ -118,7 +118,7 @@ contract PassageHandler is Test {
     /// @notice Admin withdraws tokens
     function withdrawToken(uint256 amount, address recipient, bool useToken1) external {
         TestERC20 token = useToken1 ? token1 : token2;
-        amount = bound(amount, 0, token.balanceOf(address(passage)));
+        amount = _bound(amount, 0, token.balanceOf(address(passage)));
         if (amount == 0) return;
         if (recipient == address(0)) return;
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {RollupPassage} from "../../src/passage/RollupPassage.sol";
 import {TestERC20} from "../SignetStdTest.t.sol";
@@ -64,7 +64,7 @@ contract RollupPassageHandler is Test {
 
     /// @notice Exit ETH from rollup
     function exitEth(uint256 actorIndex, uint256 amount, address hostRecipient) external useActor(actorIndex) {
-        amount = bound(amount, 0, currentActor.balance);
+        amount = _bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
 
         uint256 balanceBefore = address(rollupPassage).balance;
@@ -76,7 +76,7 @@ contract RollupPassageHandler is Test {
 
     /// @notice Exit ETH via direct transfer
     function exitEthDirect(uint256 actorIndex, uint256 amount) external useActor(actorIndex) {
-        amount = bound(amount, 0, currentActor.balance);
+        amount = _bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
 
         uint256 balanceBefore = address(rollupPassage).balance;
@@ -89,7 +89,7 @@ contract RollupPassageHandler is Test {
 
     /// @notice Exit tokens from rollup (burns them)
     function exitToken(uint256 actorIndex, uint256 amount, address hostRecipient) external useActor(actorIndex) {
-        amount = bound(amount, 0, token.balanceOf(currentActor));
+        amount = _bound(amount, 0, token.balanceOf(currentActor));
         if (amount == 0) return;
 
         uint256 supplyBefore = token.totalSupply();

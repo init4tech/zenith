@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {RollupOrders} from "../../src/orders/RollupOrders.sol";
 import {HostOrders} from "../../src/orders/HostOrders.sol";
@@ -66,7 +66,7 @@ contract OrdersHandler is Test {
         external
         useActor(actorIndex)
     {
-        amount = bound(amount, 0, currentActor.balance);
+        amount = _bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
 
         uint256 deadline = block.timestamp + 1 hours;
@@ -90,7 +90,7 @@ contract OrdersHandler is Test {
         external
         useActor(actorIndex)
     {
-        amount = bound(amount, 0, token.balanceOf(currentActor));
+        amount = _bound(amount, 0, token.balanceOf(currentActor));
         if (amount == 0) return;
 
         uint256 deadline = block.timestamp + 1 hours;
@@ -111,7 +111,7 @@ contract OrdersHandler is Test {
 
     /// @notice Sweep ETH from rollup orders
     function sweepEth(uint256 actorIndex, uint256 amount) external useActor(actorIndex) {
-        amount = bound(amount, 0, address(rollupOrders).balance);
+        amount = _bound(amount, 0, address(rollupOrders).balance);
         if (amount == 0) return;
 
         uint256 balanceBefore = currentActor.balance;
@@ -123,7 +123,7 @@ contract OrdersHandler is Test {
 
     /// @notice Sweep tokens from rollup orders
     function sweepToken(uint256 actorIndex, uint256 amount) external useActor(actorIndex) {
-        amount = bound(amount, 0, token.balanceOf(address(rollupOrders)));
+        amount = _bound(amount, 0, token.balanceOf(address(rollupOrders)));
         if (amount == 0) return;
 
         uint256 balanceBefore = token.balanceOf(currentActor);
@@ -138,7 +138,7 @@ contract OrdersHandler is Test {
         external
         useActor(actorIndex)
     {
-        amount = bound(amount, 0, currentActor.balance);
+        amount = _bound(amount, 0, currentActor.balance);
         if (amount == 0) return;
         if (recipient == address(0)) return;
         if (recipient == address(hostOrders)) return;
@@ -159,7 +159,7 @@ contract OrdersHandler is Test {
         external
         useActor(actorIndex)
     {
-        amount = bound(amount, 0, token.balanceOf(currentActor));
+        amount = _bound(amount, 0, token.balanceOf(currentActor));
         if (amount == 0) return;
         if (recipient == address(0)) return;
         if (recipient == address(hostOrders)) return;
@@ -177,7 +177,7 @@ contract OrdersHandler is Test {
 
     /// @notice Warp time forward
     function warpTime(uint256 delta) external {
-        delta = bound(delta, 0, 7 days);
+        delta = _bound(delta, 0, 7 days);
         vm.warp(block.timestamp + delta);
     }
 

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 pragma solidity 0.8.26;
 
-import {Test, console2} from "forge-std/Test.sol";
+import {Test} from "forge-std/Test.sol";
 import {StdInvariant} from "forge-std/StdInvariant.sol";
 import {Transactor} from "../../src/Transactor.sol";
 import {Passage} from "../../src/passage/Passage.sol";
@@ -62,8 +62,8 @@ contract TransactorHandler is Test {
         uint256 ethToEnter
     ) external useActor(actorIndex) {
         // Bound parameters
-        ethToEnter = bound(ethToEnter, 0, currentActor.balance);
-        gas = bound(gas, 0, perTransactGasLimit);
+        ethToEnter = _bound(ethToEnter, 0, currentActor.balance);
+        gas = _bound(gas, 0, perTransactGasLimit);
 
         // Check if we would exceed block gas limit
         uint256 currentGasUsed = transactor.transactGasUsed(rollupChainId, block.number);
@@ -94,8 +94,8 @@ contract TransactorHandler is Test {
         external
         useActor(actorIndex)
     {
-        ethToEnter = bound(ethToEnter, 0, currentActor.balance);
-        gas = bound(gas, 0, perTransactGasLimit);
+        ethToEnter = _bound(ethToEnter, 0, currentActor.balance);
+        gas = _bound(gas, 0, perTransactGasLimit);
 
         uint256 currentGasUsed = transactor.transactGasUsed(defaultChainId, block.number);
         if (currentGasUsed + gas > perBlockGasLimit) {
@@ -122,8 +122,8 @@ contract TransactorHandler is Test {
     /// @dev We ensure newPerTransact >= 1_000_000 to maintain liveness invariant
     function configureGas(uint256 newPerBlock, uint256 newPerTransact) external {
         // Ensure minimum values that maintain liveness (1M gas minimum for per-transact)
-        newPerBlock = bound(newPerBlock, 5_000_000, 100_000_000);
-        newPerTransact = bound(newPerTransact, 1_000_000, newPerBlock);
+        newPerBlock = _bound(newPerBlock, 5_000_000, 100_000_000);
+        newPerTransact = _bound(newPerTransact, 1_000_000, newPerBlock);
 
         vm.prank(gasAdmin);
         transactor.configureGas(newPerBlock, newPerTransact);
