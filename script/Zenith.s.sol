@@ -31,6 +31,37 @@ contract ZenithScript is Script {
         m = new HostOrders{salt: "zenith.hostOrders "}(permit2);
     }
 
+    // deploy with a caller-supplied salt prefix, yielding fresh CREATE2 addresses for the
+    // same source on a host where the canonical-salt deployment already exists.
+    //
+    // forge script ZenithScript \
+    //   --sig "deployWithSalts(bytes32,uint256,address,address,address,address[],address,uint256,uint256)" \
+    //   --rpc-url $RPC_URL --broadcast \
+    //   $SALT_PREFIX $ROLLUP_CHAIN_ID $SEQUENCER_ADMIN $WITHDRAWAL_ADMIN $GAS_ADMIN \
+    //   $INITIAL_ENTER_TOKENS $PERMIT2 $PER_BLOCK_GAS_LIMIT $PER_TRANSACT_GAS_LIMIT \
+    //   [signing args] [--verify ...]
+    function deployWithSalts(
+        bytes32 saltPrefix,
+        uint256 defaultRollupChainId,
+        address sequencerAdmin,
+        address withdrawalAdmin,
+        address gasAdmin,
+        address[] memory initialEnterTokens,
+        address permit2,
+        uint256 perBlockGasLimit,
+        uint256 perTransactGasLimit
+    ) public returns (Zenith z, Passage p, Transactor t, HostOrders m) {
+        vm.startBroadcast();
+        z = new Zenith{salt: keccak256(abi.encodePacked(saltPrefix, "zenith"))}(sequencerAdmin);
+        p = new Passage{salt: keccak256(abi.encodePacked(saltPrefix, "passage"))}(
+            defaultRollupChainId, withdrawalAdmin, initialEnterTokens, permit2
+        );
+        t = new Transactor{salt: keccak256(abi.encodePacked(saltPrefix, "transactor"))}(
+            defaultRollupChainId, gasAdmin, p, perBlockGasLimit, perTransactGasLimit
+        );
+        m = new HostOrders{salt: keccak256(abi.encodePacked(saltPrefix, "hostOrders"))}(permit2);
+    }
+
     // NOTE: script must be run using SequencerAdmin key
     // set sequencer:
     // forge script ZenithScript --sig "setSequencerRole(address,address)" --rpc-url $RPC_URL --private-key $PRIVATE_KEY --broadcast $ZENITH_ADDRESS $SEQUENCER_ADDRESS
